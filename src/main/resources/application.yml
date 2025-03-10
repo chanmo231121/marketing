@@ -1,0 +1,81 @@
+spring:
+  servlet:
+    multipart:
+      enabled: true # 멀티파트 업로드 지원여부 (default: true)
+      file-size-threshold: 0B # 파일을 디스크에 저장하지 않고 메모리에 저장하는 최소 크기 (default: 0B)
+      location: /Users/hyeonseok/Desktop/AWS # 업로드된 파일이 임시로 저장되는 디스크 위치 (default: WAS가 결정)t
+      max-file-size: 100MB # 한개 파일의 최대 사이즈 (default: 1MB)
+      max-request-size: 100MB # 한개 요청의 최대 사이즈 (default: 10MB)
+  # MAIL
+  mail:
+    host: smtp.naver.com
+    port: 465
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+            trust: smtp.naver.com
+          starttls: true
+
+  # DB Settings
+  datasource:
+    url: jdbc:h2:tcp://localhost:9092/~/test
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  h2:
+    console:
+      enabled: false
+
+  #  datasource:
+  cache:
+    type: redis
+  data:
+    redis:
+      host: localhost  # Redis 호스트 주소
+      port: 6379       # Redis 포트
+      database: 0      # Redis 데이터베이스 번호
+      lettuce:
+        pool:
+          max-active: 8  # 최대 활성 커넥션 수
+          max-idle: 8    # 최대 유휴 커넥션 수
+          min-idle: 2    # 최소 유휴 커넥션 수
+          max-wait: -1   # 최대 대기 시간 (-1은 무제한)
+      password:
+
+  # Hibernate
+  jpa:
+    hibernate:
+      ddl-auto: update #create #validate
+
+#JWT
+auth:
+  jwt:
+    issuer: team.mama.com
+    secret: YourSuperSecretKeyThatIsAtLeast32BytesLong!!
+    accessTokenExpirationHour: 168
+    accessTokenExpirationMinutes: 30
+    refreshTokenExpirationDays: 1
+    setFrom: abczza@naver.com
+
+# Log
+logging:
+  level:
+    org.hibernate.sql: debug
+
+
+naver:
+  api:
+    customer: 3399751
+    secret: AQAAAAAZC+t7W6f4issSJxkGJLIsU/lCEi1Lj6uB8P2MJNdGmg==
+    key: 0100000000190beb7b5ba7f88acb1227190624b22c50575f569a952371532ef36998b26306
+
+
+server:
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
