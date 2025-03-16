@@ -13,7 +13,7 @@ import java.nio.charset.StandardCharsets
 @RestController
 class Keyword2Controller(val keyword2Service: Keyword2Service) {
 
-    @CrossOrigin(origins = ["https://87d6-123-214-67-61.ngrok-free.app", "http://localhost:9000"])
+
     @Operation(summary = "키워드 연관검색")
     @GetMapping("/api/keyword2")
     fun getKeywords(

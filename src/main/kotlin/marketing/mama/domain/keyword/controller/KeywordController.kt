@@ -3,7 +3,6 @@ package marketing.mama.domain.keyword.controller
 import io.swagger.v3.oas.annotations.Operation
 import marketing.mama.domain.keyword.service.KeywordService
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.CrossOrigin
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.RestController
@@ -13,7 +12,6 @@ import java.nio.charset.StandardCharsets
 @RestController
 class KeywordController(val keywordService: KeywordService) {
 
-    @CrossOrigin(origins = ["https://87d6-123-214-67-61.ngrok-free.app", "http://localhost:9000"])
     @Operation(summary = "키워드 단일검색")
     @GetMapping("/api/keywords")
     fun getKeywords(@RequestParam("hintKeyword") hintKeyword: String): ResponseEntity<Any> {

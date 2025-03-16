@@ -14,20 +14,15 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer
 class WebConfig(
 ): WebMvcConfigurer {
 
-/*    override fun configureMessageConverters(converters: MutableList<HttpMessageConverter<*>>) {
-        val converter = MappingJackson2HttpMessageConverter()
-        converter.objectMapper.configure(SerializationFeature.FAIL_ON_EMPTY_BEANS, false)
-        converters.add(converter)
-        super.configureMessageConverters(converters)
-    }*/
-
 
     override fun addCorsMappings(registry: CorsRegistry) {
         registry.addMapping("/**")
             .allowedOrigins(
                 "http://localhost:9000",
                 "http://localhost:8080",
-                "http://87d6-123-214-67-61.ngrok-free.app") // 프론트엔드 도메인 허용
+                "http://lohosttest.s3-website.ap-northeast-2.amazonaws.com",
+                "http://maglo4.s3-website.ap-northeast-2.amazonaws.com",
+                "http://43.203.93.162") // 프론트엔드 도메인 허용
             .allowedMethods("*") // 모든 HTTP 메서드 허용
             .allowedHeaders("*") // 모든 헤더 허용
             .allowCredentials(true) // 자격 증명 허용 (예: 쿠키, 인증)
