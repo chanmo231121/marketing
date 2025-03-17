@@ -4,30 +4,32 @@ import org.jsoup.Jsoup
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.util.concurrent.CompletableFuture
 import java.util.concurrent.Executors
 
 @Service
 class KeywordRankingService {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd") // 날짜 포맷터
-    private val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 2)
 
     fun getNaverAdData(keywords: List<String>): List<Map<String, Any>> {
+        val results = mutableListOf<Map<String, Any>>()
+        val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 2)
+
         val futures = keywords.map { keyword ->
-            CompletableFuture.supplyAsync({ extractData(keyword) }, executor)
+            executor.submit<List<Map<String, Any>>> {
+                extractData(keyword)
+            }
         }
 
-        val results = mutableListOf<Map<String, Any>>()
         futures.forEach { future ->
             try {
                 results.addAll(future.get())
             } catch (e: Exception) {
                 println("데이터 처리 중 오류 발생: ${e.message}")
-                e.printStackTrace() // 스택 트레이스 출력
             }
         }
 
+        executor.shutdown()
         return results
     }
 
@@ -39,10 +41,7 @@ class KeywordRankingService {
 
         // PC 데이터 추출
         try {
-            val doc = Jsoup.connect(pcUrl)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .get()
+            val doc = Jsoup.connect(pcUrl).get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
             items.forEachIndexed { index, item ->
@@ -57,7 +56,6 @@ class KeywordRankingService {
                     val response = Jsoup.connect(encryptedUrl).followRedirects(false).execute()
                     response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
-                    println("URL 리다이렉션 실패: ${e.message}")
                     null
                 }
 
@@ -79,23 +77,17 @@ class KeywordRankingService {
                         "Subtitle" to subtitle,  // subtitle 추가
                         "SellerName" to sellerName, // 판매자명 추가
                         "Period" to period,  // period 추가
-                        "Main URL" to (originalUrl ?: "No URL")  // null인 경우 기본값 설정
+                        "Main URL" to (originalUrl ?: "")
                     )
                 )
             }
         } catch (e: Exception) {
-            println("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.stackTraceToString()}")  // 전체 스택 트레이스 출력
+            println("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}")
         }
-
-        // 크롤링 지연 추가 (1초)
-        Thread.sleep(1000)
 
         // 모바일 데이터 추출
         try {
-            val doc = Jsoup.connect(mobileUrl)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .get()
+            val doc = Jsoup.connect(mobileUrl).get()
             val items = doc.select("#contentsList > li")
 
             items.forEachIndexed { index, item ->
@@ -110,7 +102,6 @@ class KeywordRankingService {
                     val response = Jsoup.connect(encryptedUrl).followRedirects(false).execute()
                     response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
-                    println("URL 리다이렉션 실패: ${e.message}")
                     null
                 }
 
@@ -132,18 +123,15 @@ class KeywordRankingService {
                         "Subtitle" to subtitle,  // subtitle 추가
                         "SellerName" to sellerName, // 판매자명 추가
                         "Period" to period,  // period 추가
-                        "Main URL" to (originalUrl ?: "No URL")  // null인 경우 기본값 설정
+                        "Main URL" to (originalUrl ?: "")
                     )
                 )
             }
         } catch (e: Exception) {
-            println("키워드 '$keyword'의 Mobile 데이터 추출 실패: ${e.stackTraceToString()}")  // 전체 스택 트레이스 출력
+            println("키워드 '$keyword'의 Mobile 데이터 추출 실패: ${e.message}")
         }
 
-        // 크롤링 지연 추가 (1초)
-        Thread.sleep(1000)
-
         // PC와 모바일 데이터를 합친 후 반환
-        return pcRows.plus(mobileRows)
+        return pcRows.plus(mobileRows).filter { it["Main URL"] != null }
     }
 }
