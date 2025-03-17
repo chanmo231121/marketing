@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/naver-ads")
-class keywordRankingController(private val keywordRankingService: KeywordRankingService) {
+class KeywordRankingController(private val keywordRankingService: KeywordRankingService) {
 
 
 
