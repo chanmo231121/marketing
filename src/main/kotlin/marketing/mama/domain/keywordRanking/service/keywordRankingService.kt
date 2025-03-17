@@ -1,7 +1,9 @@
 package marketing.mama.domain.keywordRanking.service
 
 import org.jsoup.Jsoup
+import org.jsoup.Connection
 import org.springframework.stereotype.Service
+import java.net.URLEncoder
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
@@ -34,14 +36,21 @@ class KeywordRankingService {
     }
 
     private fun extractData(keyword: String): List<Map<String, Any>> {
-        val pcUrl = "https://ad.search.naver.com/search.naver?where=ad&query=$keyword"
-        val mobileUrl = "https://m.ad.search.naver.com/search.naver?where=m_expd&query=$keyword"
+        val encodedKeyword = URLEncoder.encode(keyword, "UTF-8") // URL 인코딩 추가
+        val pcUrl = "https://ad.search.naver.com/search.naver?where=ad&query=$encodedKeyword"
+        val mobileUrl = "https://m.ad.search.naver.com/search.naver?where=m_expd&query=$encodedKeyword"
         val pcRows = mutableListOf<Map<String, Any>>()
         val mobileRows = mutableListOf<Map<String, Any>>()
 
         // PC 데이터 추출
         try {
-            val doc = Jsoup.connect(pcUrl).get()
+            val doc = Jsoup.connect(pcUrl)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                .header("Connection", "keep-alive")
+                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
+                .get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
             items.forEachIndexed { index, item ->
@@ -87,7 +96,13 @@ class KeywordRankingService {
 
         // 모바일 데이터 추출
         try {
-            val doc = Jsoup.connect(mobileUrl).get()
+            val doc = Jsoup.connect(mobileUrl)
+                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+                .header("Connection", "keep-alive")
+                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
+                .get()
             val items = doc.select("#contentsList > li")
 
             items.forEachIndexed { index, item ->
@@ -135,3 +150,4 @@ class KeywordRankingService {
         return pcRows.plus(mobileRows).filter { it["Main URL"] != null }
     }
 }
+
