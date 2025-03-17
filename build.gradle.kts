@@ -68,12 +68,9 @@ dependencies {
 
     implementation ("com.google.code.gson:gson:2.8.8")
 
-    implementation("org.jsoup:jsoup:1.17.2")
+    implementation("org.jsoup:jsoup:1.19.1")
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
     implementation ("org.json:json:20210307")
-
-
-    implementation ("org.jsoup:jsoup:1.14.3")
 }
 
 noArg {
