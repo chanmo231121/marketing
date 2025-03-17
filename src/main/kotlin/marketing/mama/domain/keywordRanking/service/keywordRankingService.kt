@@ -3,7 +3,6 @@ package marketing.mama.domain.keywordRanking.service
 import org.jsoup.Jsoup
 import org.jsoup.Connection
 import org.springframework.stereotype.Service
-import java.net.URLEncoder
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
@@ -36,20 +35,29 @@ class KeywordRankingService {
     }
 
     private fun extractData(keyword: String): List<Map<String, Any>> {
-        val encodedKeyword = URLEncoder.encode(keyword, "UTF-8") // URL 인코딩 추가
-        val pcUrl = "https://ad.search.naver.com/search.naver?where=ad&query=$encodedKeyword"
-        val mobileUrl = "https://m.ad.search.naver.com/search.naver?where=m_expd&query=$encodedKeyword"
+        val pcUrl = "https://ad.search.naver.com/search.naver?where=ad&query=$keyword"
+        val mobileUrl = "https://m.ad.search.naver.com/search.naver?where=m_expd&query=$keyword"
         val pcRows = mutableListOf<Map<String, Any>>()
         val mobileRows = mutableListOf<Map<String, Any>>()
+
+        val headers = mapOf(
+            "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
+            "Accept" to "application/json, text/plain, */*",
+            "Accept-Encoding" to "gzip, deflate, br, zstd",
+            "Accept-Language" to "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
+            "Connection" to "keep-alive",
+            "Sec-CH-UA" to "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
+            "Sec-CH-UA-Mobile" to "?0",
+            "Sec-CH-UA-Platform" to "\"Windows\"",
+            "Sec-Fetch-Dest" to "empty",
+            "Sec-Fetch-Mode" to "cors",
+            "Sec-Fetch-Site" to "same-site"
+        )
 
         // PC 데이터 추출
         try {
             val doc = Jsoup.connect(pcUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                .header("Connection", "keep-alive")
-                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
+                .headers(headers)
                 .get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
@@ -97,11 +105,7 @@ class KeywordRankingService {
         // 모바일 데이터 추출
         try {
             val doc = Jsoup.connect(mobileUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                .header("Connection", "keep-alive")
-                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
+                .headers(headers)
                 .get()
             val items = doc.select("#contentsList > li")
 
@@ -150,4 +154,3 @@ class KeywordRankingService {
         return pcRows.plus(mobileRows).filter { it["Main URL"] != null }
     }
 }
-
