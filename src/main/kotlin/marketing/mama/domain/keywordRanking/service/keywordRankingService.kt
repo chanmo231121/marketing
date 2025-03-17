@@ -1,7 +1,6 @@
 package marketing.mama.domain.keywordRanking.service
 
 import org.jsoup.Jsoup
-import org.jsoup.Connection
 import org.springframework.stereotype.Service
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
@@ -18,7 +17,12 @@ class KeywordRankingService {
 
         val futures = keywords.map { keyword ->
             executor.submit<List<Map<String, Any>>> {
-                extractData(keyword)
+                try {
+                    extractData(keyword)
+                } catch (e: Exception) {
+                    println("키워드 '$keyword' 처리 중 오류 발생: ${e.message}")
+                    listOf(mapOf("error" to "크롤링 실패: ${e.message}"))
+                }
             }
         }
 
@@ -42,22 +46,17 @@ class KeywordRankingService {
 
         val headers = mapOf(
             "User-Agent" to "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-            "Accept" to "application/json, text/plain, */*",
-            "Accept-Encoding" to "gzip, deflate, br, zstd",
+            "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language" to "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
             "Connection" to "keep-alive",
-            "Sec-CH-UA" to "\"Chromium\";v=\"134\", \"Not:A-Brand\";v=\"24\", \"Google Chrome\";v=\"134\"",
-            "Sec-CH-UA-Mobile" to "?0",
-            "Sec-CH-UA-Platform" to "\"Windows\"",
-            "Sec-Fetch-Dest" to "empty",
-            "Sec-Fetch-Mode" to "cors",
-            "Sec-Fetch-Site" to "same-site"
+            "Cookie" to "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F"
         )
 
         // PC 데이터 추출
         try {
             val doc = Jsoup.connect(pcUrl)
                 .headers(headers)
+                .timeout(10000) // 10초 타임아웃 설정
                 .get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
@@ -70,7 +69,11 @@ class KeywordRankingService {
 
                 val encryptedUrl = titleElement?.attr("href") ?: ""
                 val originalUrl = try {
-                    val response = Jsoup.connect(encryptedUrl).followRedirects(false).execute()
+                    val response = Jsoup.connect(encryptedUrl)
+                        .headers(headers)
+                        .followRedirects(false)
+                        .timeout(10000) // 10초 타임아웃 설정
+                        .execute()
                     response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
                     null
@@ -102,10 +105,14 @@ class KeywordRankingService {
             println("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}")
         }
 
+        // 요청 간 지연 추가 (1초)
+        Thread.sleep(1000)
+
         // 모바일 데이터 추출
         try {
             val doc = Jsoup.connect(mobileUrl)
                 .headers(headers)
+                .timeout(10000) // 10초 타임아웃 설정
                 .get()
             val items = doc.select("#contentsList > li")
 
@@ -118,7 +125,11 @@ class KeywordRankingService {
 
                 val encryptedUrl = item.selectFirst("a")?.attr("href") ?: ""
                 val originalUrl = try {
-                    val response = Jsoup.connect(encryptedUrl).followRedirects(false).execute()
+                    val response = Jsoup.connect(encryptedUrl)
+                        .headers(headers)
+                        .followRedirects(false)
+                        .timeout(10000) // 10초 타임아웃 설정
+                        .execute()
                     response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
                     null
