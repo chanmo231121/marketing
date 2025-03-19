@@ -2,20 +2,23 @@ package marketing.mama.domain.keywordRanking.service
 
 import org.jsoup.Jsoup
 import org.jsoup.Connection
+import org.slf4j.LoggerFactory
 import org.springframework.stereotype.Service
 import java.net.URLEncoder
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 
 @Service
 class KeywordRankingService {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd") // 날짜 포맷터
+    private val logger = LoggerFactory.getLogger(KeywordRankingService::class.java) // 로깅 프레임워크
 
     fun getNaverAdData(keywords: List<String>): List<Map<String, Any>> {
         val results = mutableListOf<Map<String, Any>>()
-        val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors() - 2)
+        val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors()) // CPU 코어 수에 맞게 스레드 풀 설정
 
         val futures = keywords.map { keyword ->
             executor.submit<List<Map<String, Any>>> {
@@ -27,11 +30,12 @@ class KeywordRankingService {
             try {
                 results.addAll(future.get())
             } catch (e: Exception) {
-                println("데이터 처리 중 오류 발생: ${e.message}")
+                logger.error("데이터 처리 중 오류 발생: ${e.message}", e)
             }
         }
 
         executor.shutdown()
+        executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS) // 모든 작업이 완료될 때까지 대기
         return results
     }
 
@@ -44,13 +48,7 @@ class KeywordRankingService {
 
         // PC 데이터 추출
         try {
-            val doc = Jsoup.connect(pcUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                .header("Connection", "keep-alive")
-                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
-                .get()
+            val doc = createJsoupConnection(pcUrl).get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
             items.forEachIndexed { index, item ->
@@ -91,18 +89,12 @@ class KeywordRankingService {
                 )
             }
         } catch (e: Exception) {
-            println("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}")
+            logger.error("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}", e)
         }
 
         // 모바일 데이터 추출
         try {
-            val doc = Jsoup.connect(mobileUrl)
-                .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
-                .header("Connection", "keep-alive")
-                .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
-                .get()
+            val doc = createJsoupConnection(mobileUrl).get()
             val items = doc.select("#contentsList > li")
 
             items.forEachIndexed { index, item ->
@@ -143,11 +135,19 @@ class KeywordRankingService {
                 )
             }
         } catch (e: Exception) {
-            println("키워드 '$keyword'의 Mobile 데이터 추출 실패: ${e.message}")
+            logger.error("키워드 '$keyword'의 Mobile 데이터 추출 실패: ${e.message}", e)
         }
 
         // PC와 모바일 데이터를 합친 후 반환
         return pcRows.plus(mobileRows).filter { it["Main URL"] != null }
     }
-}
 
+    private fun createJsoupConnection(url: String): Connection {
+        return Jsoup.connect(url)
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36")
+            .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7")
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7")
+            .header("Connection", "keep-alive")
+            .header("Cookie", "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F")
+    }
+}
