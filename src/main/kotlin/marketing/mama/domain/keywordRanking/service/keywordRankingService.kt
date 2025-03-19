@@ -49,55 +49,54 @@ class KeywordRankingService {
             "Accept" to "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
             "Accept-Language" to "ko-KR,ko;q=0.9,en-US;q=0.8,en;q=0.7",
             "Connection" to "keep-alive",
-            "Referer" to "https://ad.search.naver.com/",
-            "Origin" to "https://ad.search.naver.com"
+            "Cookie" to "nid_inf=1965910477; page_uid=i9kgHdpzL8VsstOs8Sdsssssted-056711; _naver_usersession_=Ky7LKvojsDp+oBZOPI1LEX1F"
         )
 
         // PC 데이터 추출
         try {
-            val response = Jsoup.connect(pcUrl)
+            val doc = Jsoup.connect(pcUrl)
                 .headers(headers)
-                .timeout(10000)
-                .execute()
-
-            val doc = response.parse()
+                .timeout(10000) // 10초 타임아웃 설정
+                .get()
             val items = doc.select("#content > div > ol > li > div.inner")
 
             items.forEachIndexed { index, item ->
                 val titleElement = item.selectFirst("a.tit_wrap")
                 val title = titleElement?.text()?.trim() ?: "No Title"
 
-                val subtitleElement = item.selectFirst(".link_desc")
-                val subtitle = subtitleElement?.text()?.trim() ?: "No Subtitle"
+                val subtitleElement = item.selectFirst(".link_desc")  // subtitle에 해당하는 요소 선택
+                val subtitle = subtitleElement?.text()?.trim() ?: "No Subtitle"  // subtitle 추출
 
                 val encryptedUrl = titleElement?.attr("href") ?: ""
                 val originalUrl = try {
-                    val redirectResponse = Jsoup.connect(encryptedUrl)
+                    val response = Jsoup.connect(encryptedUrl)
                         .headers(headers)
                         .followRedirects(false)
-                        .timeout(10000)
+                        .timeout(10000) // 10초 타임아웃 설정
                         .execute()
-                    redirectResponse.header("Location") ?: encryptedUrl
+                    response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
                     null
                 }
 
-                val sellerNameElement = item.selectFirst("a.site")
+                // 판매자명 추출 (PC는 a.site)
+                val sellerNameElement = item.selectFirst("a.site") // 판매자명이 있는 <a> 태그 선택자
                 val sellerName = sellerNameElement?.text()?.trim() ?: "No Seller Name"
 
-                val periodElement = item.selectFirst(".period_area .txt")
-                val period = periodElement?.text()?.trim() ?: "No Period"
+                // period 추출 (PC에서)
+                val periodElement = item.selectFirst(".period_area .txt")  // period에 해당하는 요소 선택
+                val period = periodElement?.text()?.trim() ?: "No Period"  // period 추출
 
                 pcRows.add(
                     mapOf(
-                        "Date" to LocalDateTime.now().format(dateFormatter),
+                        "Date" to LocalDateTime.now().format(dateFormatter),  // 날짜 포맷팅
                         "Keyword" to keyword,
                         "Rank" to index + 1,
                         "Platform" to "PC",
                         "Title" to title,
-                        "Subtitle" to subtitle,
-                        "SellerName" to sellerName,
-                        "Period" to period,
+                        "Subtitle" to subtitle,  // subtitle 추가
+                        "SellerName" to sellerName, // 판매자명 추가
+                        "Period" to period,  // period 추가
                         "Main URL" to (originalUrl ?: "")
                     )
                 )
@@ -106,51 +105,54 @@ class KeywordRankingService {
             println("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}")
         }
 
+        // 요청 간 지연 추가 (1초)
+        Thread.sleep(1000)
+
         // 모바일 데이터 추출
         try {
-            val response = Jsoup.connect(mobileUrl)
+            val doc = Jsoup.connect(mobileUrl)
                 .headers(headers)
-                .timeout(10000)
-                .execute()
-
-            val doc = response.parse()
+                .timeout(10000) // 10초 타임아웃 설정
+                .get()
             val items = doc.select("#contentsList > li")
 
             items.forEachIndexed { index, item ->
                 val titleElement = item.selectFirst("div.tit_wrap div.tit_area")
                 val title = titleElement?.text()?.trim() ?: "No Title"
 
-                val subtitleElement = item.selectFirst(".desc")
-                val subtitle = subtitleElement?.text()?.trim() ?: "No Subtitle"
+                val subtitleElement = item.selectFirst(".desc")  // subtitle에 해당하는 요소 선택
+                val subtitle = subtitleElement?.text()?.trim() ?: "No Subtitle"  // subtitle 추출
 
                 val encryptedUrl = item.selectFirst("a")?.attr("href") ?: ""
                 val originalUrl = try {
-                    val redirectResponse = Jsoup.connect(encryptedUrl)
+                    val response = Jsoup.connect(encryptedUrl)
                         .headers(headers)
                         .followRedirects(false)
-                        .timeout(10000)
+                        .timeout(10000) // 10초 타임아웃 설정
                         .execute()
-                    redirectResponse.header("Location") ?: encryptedUrl
+                    response.header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
                     null
                 }
 
-                val sellerNameElement = item.selectFirst("span.site")
+                // 모바일에서 판매자명 추출 (span.site에서 텍스트 추출)
+                val sellerNameElement = item.selectFirst("span.site") // 모바일에서 판매자명이 있는 <span> 태그 선택자
                 val sellerName = sellerNameElement?.text()?.trim() ?: "No Seller Name"
 
-                val periodElement = item.selectFirst(".period_area .txt")
-                val period = periodElement?.text()?.trim() ?: "No Period"
+                // period 추출 (Mobile에서)
+                val periodElement = item.selectFirst(".period_area .txt")  // period에 해당하는 요소 선택
+                val period = periodElement?.text()?.trim() ?: "No Period"  // period 추출
 
                 mobileRows.add(
                     mapOf(
-                        "Date" to LocalDateTime.now().format(dateFormatter),
+                        "Date" to LocalDateTime.now().format(dateFormatter),  // 날짜 포맷팅
                         "Keyword" to keyword,
                         "Rank" to index + 1,
                         "Platform" to "Mobile",
                         "Title" to title,
-                        "Subtitle" to subtitle,
-                        "SellerName" to sellerName,
-                        "Period" to period,
+                        "Subtitle" to subtitle,  // subtitle 추가
+                        "SellerName" to sellerName, // 판매자명 추가
+                        "Period" to period,  // period 추가
                         "Main URL" to (originalUrl ?: "")
                     )
                 )

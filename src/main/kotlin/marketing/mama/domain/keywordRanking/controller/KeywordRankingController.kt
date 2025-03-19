@@ -13,11 +13,12 @@ class KeywordRankingController(private val keywordRankingService: KeywordRanking
     @Operation(summary = "네이버 검색광고 입찰순위")
     @GetMapping("/search")
     fun searchNaverAds(@RequestParam keywords: String): List<Map<String, Any>> {
-        // URL 디코딩
-        val decodedKeywords = URLDecoder.decode(keywords, StandardCharsets.UTF_8.toString())
+        println("✅ 요청 받은 키워드: $keywords")
 
-        // 디코딩된 키워드들을 쉼표로 나누어 리스트로 변환
+        val decodedKeywords = URLDecoder.decode(keywords, StandardCharsets.UTF_8.toString())
         val keywordList = decodedKeywords.split(",").map { it.trim() }
+
+        println("✅ 디코딩된 키워드 리스트: $keywordList")
 
         return keywordRankingService.getNaverAdData(keywordList)
     }
