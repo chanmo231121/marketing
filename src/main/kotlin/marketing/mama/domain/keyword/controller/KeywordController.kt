@@ -22,7 +22,7 @@ class KeywordController(val keywordService: KeywordService) {
         }
 
         if (hintKeywords.size > 1000) {
-            return ResponseEntity.badRequest().body(mapOf("error" to "최대 1000개의 키워드만 입력할 수 있습니다. 현재 입력한 키워드 개수: ${hintKeywords.size}"))
+            return ResponseEntity.badRequest().body(mapOf("error" to "최대 100개의 키워드만 입력할 수 있습니다. 현재 입력한 키워드 개수: ${hintKeywords.size}"))
         }
 
         val results = mutableListOf<Map<String, Any>>()

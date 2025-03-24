@@ -16,20 +16,29 @@ class KeywordService {
     private val apiKey = "010000000052c2af4a5d6cdbeb92d376975b4ef04b3813214afa7dd4a3eaca3df3d7d75ebe"
     private val secretKey = "AQAAAAC9WaMhLS9PP5Bao8EzL8dgycdW6peurw4EN108IfvRQw=="
     private val customerId = "3399751"
+    private val client = OkHttpClient()
 
-    private val coreCount = Runtime.getRuntime().availableProcessors() // 사용 가능한 코어 개수
-    private val executor = Executors.newFixedThreadPool((coreCount / 2).coerceAtLeast(1)) // CPU 절반만 사용
+    private val threadCount = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
+    private val executor = Executors.newFixedThreadPool(threadCount)
 
     fun getKeywords(hintKeyword: String): List<Map<String, Any>> {
         val keywords = hintKeyword.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        val resultList = ArrayList<Map<String, Any>>(keywords.size) // 메모리 최적화
+        val resultList = Collections.synchronizedList(mutableListOf<Map<String, Any>>())
 
         val futures = keywords.map { keyword ->
-            CompletableFuture.supplyAsync({ fetchKeywordData(keyword) }, executor)
+            executor.submit {
+                fetchKeywordData(keyword)?.let {
+                    resultList.add(it)
+                }
+            }
         }
 
-        futures.forEach { future ->
-            future.get()?.let { resultList.add(it) }
+        futures.forEach {
+            try {
+                it.get()
+            } catch (e: Exception) {
+                println("오류 발생: ${e.message}")
+            }
         }
 
         return resultList
@@ -41,42 +50,41 @@ class KeywordService {
         val url = "$baseUrl$uri?hintKeywords=$keyword&showDetail=1"
         val headers = getHeader(method, uri, apiKey, secretKey, customerId)
 
-        var attempt = 0
-        while (attempt < 3) { // 최대 3번 재시도
-            val response = makeRequest(url, headers)
-            val responseBody = response.body?.string() ?: ""
+        repeat(3) { attempt ->
+            makeRequest(url, headers).use { response ->
+                when (response.code) {
+                    429 -> {
+                        println("API 호출 제한 발생, 재시도: ${attempt + 1}")
+                        Thread.sleep(1000L * (attempt + 1))
+                    }
+                    200 -> {
+                        val jsonResponse = JSONObject(response.body?.string() ?: "")
+                        if (!jsonResponse.has("keywordList") || jsonResponse.getJSONArray("keywordList").length() == 0) {
+                            println("검색 결과 없음: $keyword")
+                            return null
+                        }
 
-            if (response.code == 200) {
-                val jsonResponse = JSONObject(responseBody)
-                val keywordList = jsonResponse.getJSONArray("keywordList")
-
-                if (keywordList.length() > 0) {
-                    val firstKeyword = keywordList.getJSONObject(0)
-                    return mapOf(
-                        "연관키워드" to firstKeyword.getString("relKeyword"),
-                        "월간검색수_PC" to firstKeyword.getInt("monthlyPcQcCnt"),
-                        "월간검색수_모바일" to firstKeyword.getInt("monthlyMobileQcCnt"),
-                        "월평균클릭수_PC" to firstKeyword.getInt("monthlyAvePcClkCnt"),
-                        "월평균클릭수_모바일" to firstKeyword.getInt("monthlyAveMobileClkCnt"),
-                        "월평균클릭률_PC" to firstKeyword.getDouble("monthlyAvePcCtr"),
-                        "월평균클릭률_모바일" to firstKeyword.getDouble("monthlyAveMobileCtr"),
-                        "경쟁정도" to firstKeyword.getString("compIdx"),
-                        "월평균노출광고수" to firstKeyword.getInt("plAvgDepth")
-                    )
+                        val firstKeyword = jsonResponse.getJSONArray("keywordList").getJSONObject(0)
+                        return mapOf(
+                            "연관키워드" to firstKeyword.getString("relKeyword"),
+                            "월간검색수_PC" to firstKeyword.optInt("monthlyPcQcCnt", 0),
+                            "월간검색수_모바일" to firstKeyword.optInt("monthlyMobileQcCnt", 0),
+                            "월평균클릭수_PC" to firstKeyword.optInt("monthlyAvePcClkCnt", 0),
+                            "월평균클릭수_모바일" to firstKeyword.optInt("monthlyAveMobileClkCnt", 0),
+                            "월평균클릭률_PC" to firstKeyword.optDouble("monthlyAvePcCtr", 0.0),
+                            "월평균클릭률_모바일" to firstKeyword.optDouble("monthlyAveMobileCtr", 0.0),
+                            "경쟁정도" to firstKeyword.getString("compIdx"),
+                            "월평균노출광고수" to firstKeyword.optInt("plAvgDepth", 0)
+                        )
+                    }
+                    else -> {
+                        println("API 요청 실패: ${response.code}")
+                        return null
+                    }
                 }
-                break
-            } else if (response.code == 429) { // Too Many Requests
-                println("요청이 너무 많음! 1초 대기 후 재시도 ($attempt)")
-                Thread.sleep(1000)
-                attempt++
-            } else {
-                println("API 오류 발생: ${response.code}, 응답: $responseBody")
-                break
             }
         }
-
-        // API 부하 방지 - 300~500ms 랜덤 딜레이
-        Thread.sleep((300..500).random().toLong())
+        println("최대 재시도 초과: $keyword")
         return null
     }
 
@@ -94,26 +102,18 @@ class KeywordService {
     }
 
     private fun makeRequest(url: String, headers: Map<String, String>): okhttp3.Response {
-        val client = OkHttpClient()
         val requestBuilder = Request.Builder().url(url)
-
-        for ((key, value) in headers) {
-            requestBuilder.addHeader(key, value)
-        }
-
-        val request = requestBuilder.build()
-        return client.newCall(request).execute()
+        headers.forEach { (key, value) -> requestBuilder.addHeader(key, value) }
+        return client.newCall(requestBuilder.build()).execute()
     }
 }
 
-// Signature class to generate the signature
 object Signature {
     fun generate(timestamp: String, method: String, uri: String, secretKey: String): String {
         val message = "$timestamp.$method.$uri"
         val mac = Mac.getInstance("HmacSHA256")
         val secretKeySpec = SecretKeySpec(secretKey.toByteArray(Charsets.UTF_8), "HmacSHA256")
         mac.init(secretKeySpec)
-        val hash = mac.doFinal(message.toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(hash)
+        return Base64.getEncoder().encodeToString(mac.doFinal(message.toByteArray(Charsets.UTF_8)))
     }
 }
