@@ -1,6 +1,7 @@
 package marketing.mama.domain.user.controller
 
 import io.swagger.v3.oas.annotations.Operation
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import marketing.mama.domain.user.dto.request.LoginRequest
@@ -64,8 +65,12 @@ class UserController(
 
         return ResponseEntity.ok(userProfile)
     }
-
-
+    @Operation(summary = "로그아웃")
+    @PostMapping("/logout")
+    fun logout(request: HttpServletRequest, response: HttpServletResponse): ResponseEntity<String> {
+        userService.logout(response, request)
+        return ResponseEntity.ok("로그아웃 되었습니다.")
+    }
 
 
 

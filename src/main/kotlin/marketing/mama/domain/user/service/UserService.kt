@@ -11,13 +11,14 @@ import marketing.mama.domain.user.dto.response.UserResponse
 
 interface UserService {
 
+        fun logout(response: HttpServletResponse, request: HttpServletRequest)
         fun signUp(request: SignUpRequest): UserResponse
 //        fun updateUserProfile(userId: Long, request: UpdateUserProfileRequest): UserResponse
         fun getUserProfile(userId: Long):UserResponse
         fun login(request: LoginRequest, response: HttpServletResponse): LoginResponse
 /*
         fun updatePassword(request: UpdateUserPasswordRequest)
-        fun logout(response: HttpServletResponse, request: HttpServletRequest)
+
         fun withdrawal(userId: Long)
 
         fun sendPasswordResetCode(email: String, phoneNumber: String): Boolean

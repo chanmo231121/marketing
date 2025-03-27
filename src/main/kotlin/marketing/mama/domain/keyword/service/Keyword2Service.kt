@@ -34,7 +34,7 @@ class Keyword2Service {
             val keywordList = jsonResponse.getJSONArray("keywordList")
 
             val result = mutableListOf<Map<String, Any>>()
-            val maxResults = minOf(keywordList.length(), 500)
+            val maxResults = minOf(keywordList.length(), 1000)
 
             for (i in 0 until maxResults) {
                 val keyword = keywordList.getJSONObject(i)

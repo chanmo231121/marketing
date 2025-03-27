@@ -51,4 +51,12 @@ class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(errorResponse)
 
     }
+
+    @ExceptionHandler(IllegalStateException::class)
+    fun handleIllegalStateException(e: IllegalStateException): ResponseEntity<ErrorResponse> {
+        return ResponseEntity
+            .status(HttpStatus.BAD_REQUEST)
+            .body(ErrorResponse(e.message ?: "요청이 올바르지 않습니다."))
+    }
+
 }

@@ -86,7 +86,7 @@ class UserServiceImpl(
             name = user.name,
         )
     }
-/*
+
     override fun logout(response: HttpServletResponse, request: HttpServletRequest) {
 
         val accessToken = jwtPlugin.extractAccessTokenFromRequest(request)
@@ -95,6 +95,8 @@ class UserServiceImpl(
         // 블랙리스트에 엑세스 토큰 추가
         jwtPlugin.invalidateToken(accessToken)
     }
+/*
+
 
     override fun withdrawal(userId: Long) {
         val user = userRepository.findById(userId)
