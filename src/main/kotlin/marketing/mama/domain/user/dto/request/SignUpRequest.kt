@@ -21,7 +21,6 @@ data class SignUpRequest(
     @field: ValidPassword
     var password: String,
 
-    @field: ValidPassword
     var confirmpassword:String,
 
     var introduction: String,
