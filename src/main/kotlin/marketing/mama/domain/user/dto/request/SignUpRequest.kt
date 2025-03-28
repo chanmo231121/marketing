@@ -14,7 +14,6 @@ data class SignUpRequest(
 
     var name: String,
 
-    var nickname: String,
 
     @field:Email
     var email: String,
@@ -32,7 +31,7 @@ data class SignUpRequest(
 
     var role: Role,
 
-    var profilePicUrl: MutableList<MultipartFile> = mutableListOf()
+
 ){
 
     fun to(): User {
@@ -44,7 +43,7 @@ data class SignUpRequest(
             introduction = introduction,
             tlno = tlno,
             status = Status.NORMAL,
-            nickname = nickname,
+
         )
     }
 }

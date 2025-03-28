@@ -1,7 +1,8 @@
 package marketing.mama.domain.user.model
 
 enum class Role {
-        USER,
-        ADMIN
+        사원,
+        리더
+
 
 }

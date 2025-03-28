@@ -13,8 +13,8 @@ interface UserRepository:JpaRepository<User, Long> {
     fun findByEmail(email:String):User?
     fun findByStatus(status: Status): List<User>
     fun findByEmailAndTlno(email: String, tlno: String): User?
-    fun findByNickname(nickname: String): User?
-    fun existsByNickname(nickname: String): Boolean
+    //fun findByNickname(nickname: String): User?
+    fun existsByname(name: String): Boolean
 
 
 

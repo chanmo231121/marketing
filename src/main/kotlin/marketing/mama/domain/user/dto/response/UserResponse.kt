@@ -31,7 +31,7 @@ data class UserResponse(
             tlno = user.tlno,
             role = user.role.name,
             //profilePicUrl = user.profilePicUrl,
-            nickname = user.nickname
+            nickname = user.name
         )
     }
 }

@@ -5,6 +5,7 @@ import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import marketing.mama.domain.user.dto.request.LoginRequest
 import marketing.mama.domain.user.dto.request.SignUpRequest
+import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
 import marketing.mama.domain.user.dto.response.LoginResponse
 import marketing.mama.domain.user.dto.response.UserResponse
 
@@ -13,7 +14,7 @@ interface UserService {
 
         fun logout(response: HttpServletResponse, request: HttpServletRequest)
         fun signUp(request: SignUpRequest): UserResponse
-//        fun updateUserProfile(userId: Long, request: UpdateUserProfileRequest): UserResponse
+        fun updateUserProfile(request: UpdateUserProfileRequest): UserResponse
         fun getUserProfile(userId: Long):UserResponse
         fun login(request: LoginRequest, response: HttpServletResponse): LoginResponse
 /*

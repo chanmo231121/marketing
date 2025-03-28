@@ -13,7 +13,7 @@ data class BoardRequest(
             title = this.title,
             content = this.content,
             user = user,
-            nickName = user.nickname // user의 nickname을 board에 담기
+            name = user.name // user의 nickname을 board에 담기
         )
     }
 }

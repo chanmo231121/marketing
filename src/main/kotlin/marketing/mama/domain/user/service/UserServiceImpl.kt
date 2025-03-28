@@ -9,11 +9,13 @@ import marketing.mama.domain.refreshToken.model.RefreshToken
 import marketing.mama.domain.refreshToken.repository.RefreshTokenRepository
 import marketing.mama.domain.user.dto.request.LoginRequest
 import marketing.mama.domain.user.dto.request.SignUpRequest
+import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
 import marketing.mama.domain.user.dto.response.LoginResponse
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.model.User
 import marketing.mama.domain.user.repository.UserRepository
+import marketing.mama.global.exception.ModelNotFoundException
 import marketing.mama.global.exception.UnauthorizedException
 import marketing.mama.global.exception.WithdrawalCancellationException
 import marketing.mama.infra.security.UserPrincipal
@@ -154,12 +156,11 @@ class UserServiceImpl(
         if (request.password != request.confirmpassword) {
             throw IllegalArgumentException("비밀번호와 확인 비밀번호가 일치하지 않습니다.")
         }
-        if (userRepository.existsByNickname(request.nickname)) {
-            throw IllegalStateException("닉네임이 이미 사용중입니다.")
+        if (userRepository.existsByname(request.name)) {
+            throw IllegalStateException("이름이 이미 사용중입니다.")
         }
-        // 기본 이미지 URL로 대체
-        val uploadedImageStrings = mutableListOf("https://cdn.quasar.dev/img/boy-avatar.png")
 
+        // 기본 이미지 URL로 대체
         // 비밀번호 해싱
         val hashedPassword = passwordEncoder.encode(request.password)
         // 사용자 정보 생성
@@ -170,10 +171,9 @@ class UserServiceImpl(
             password = hashedPassword,
             introduction = request.introduction,
             tlno = request.tlno,
-            nickname = request.nickname,
             status = Status.NORMAL,
         )
-        user.profilePicUrl = uploadedImageStrings
+
         // 사용자 정보 저장
         val savedUser = userRepository.save(user)
         // 이메일 인증 코드 생성 (하지만 이메일 전송은 하지 않음)
@@ -196,35 +196,32 @@ class UserServiceImpl(
         }
         return UserResponse.from(user)
     }
-/*
-
 
     @Transactional
     override fun updateUserProfile(
-        userId: Long,
         request: UpdateUserProfileRequest
     ): UserResponse {
         val authenticatedId: Long = (SecurityContextHolder.getContext().authentication.principal as? UserPrincipal)?.id
-            ?: throw IllegalStateException("로그인을 부터")
-        if (userId != authenticatedId) {
-            throw IllegalArgumentException("프로필 수정 권한이 없습니다.")
-        }
-        val user = userRepository.findByIdOrNull(userId) ?: throw ModelNotFoundException("User", userId)
+            ?: throw IllegalStateException("로그인을 먼저 하세요.")
+
+        val user = userRepository.findByIdOrNull(authenticatedId)
+            ?: throw ModelNotFoundException("User", authenticatedId)
+
         if (user.status == Status.WITHDRAWAL) {
             throw IllegalStateException("탈퇴한 사용자는 프로필을 수정할 수 없습니다.")
-        }
-        val uploadedImageStrings = if (request.profilePicUrl.isNotEmpty()) {
-            s3Service.upload(request.profilePicUrl, "profile").toMutableList()
-        } else {
-            mutableListOf("https://cdn.quasar.dev/img/boy-avatar.png")
         }
 
         user.name = request.name
         user.introduction = request.introduction
         user.tlno = request.tlno
-        user.profilePicUrl = uploadedImageStrings
+
         return UserResponse.from(user)
     }
+
+/*
+
+
+
 
     override fun sendPasswordResetCode(email: String, phoneNumber: String): Boolean {
         val user = userRepository.findByEmailAndTlno(email, phoneNumber)

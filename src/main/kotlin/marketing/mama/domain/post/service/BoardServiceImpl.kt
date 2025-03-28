@@ -52,7 +52,6 @@ class BoardServiceImpl(
         // 게시글 수정
         board.title = boardRequest.title
         board.content = boardRequest.content
-        board.nickName = user.nickname // 게시글 수정 시 사용자의 닉네임도 갱신
         val updatedBoard = boardRepository.save(board)
 
         return BoardResponse.from(updatedBoard)

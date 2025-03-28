@@ -18,7 +18,7 @@ data class BoardResponse(
                 id = board.id!!,
                 title = board.title,
                 content = board.content,
-                name = board.nickName,   // 작성자 nickname
+                name = board.name,   // 작성자 nickname
                 createdAt = board.createdAt // 게시글 생성일시
             )
         }

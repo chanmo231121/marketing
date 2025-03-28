@@ -11,8 +11,6 @@ class User(
     @Column(name = "name", nullable = false)
     var name: String,
 
-    @Column(name = "nickname", nullable = false)
-    var nickname: String,
 
     @Column(name = "email", nullable = false)
     val email: String,
@@ -26,19 +24,14 @@ class User(
     @Column(name = "tlno")
     var tlno: String,
 
-    @Column(name = "profile_pic_url", columnDefinition = "TEXT")
-    @Convert(converter = StringMutableListConverter::class)
-    //사용자가 프로필 이미지를 업로드하지 않았을 때, 사용되는 기본 이미지 URL
-    var profilePicUrl: MutableList<String> = mutableListOf("https://cdn.quasar.dev/img/boy-avatar.png"),
-
 /*    @Column(name = "verification_code")
     var verificationCode: String? = null,*/
 
-    @Column(name = "password_code")
+/*    @Column(name = "password_code")
     var passwordCode: String? = null,
 
     @Column(name = "provider_id")
-    val providerId: String? = null,
+    val providerId: String? = null,*/
 
     @Column(name = "status", nullable = false)
     @Enumerated(EnumType.STRING)

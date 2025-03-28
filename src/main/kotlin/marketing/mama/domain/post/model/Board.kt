@@ -18,7 +18,7 @@ class Board(
     var content: String,
 
     @Column(name = "name")
-    var nickName: String,
+    var name: String,
 
     @JoinColumn(name = "user_id", nullable = false)
     @ManyToOne

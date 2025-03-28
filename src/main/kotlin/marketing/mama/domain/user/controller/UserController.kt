@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import marketing.mama.domain.user.dto.request.LoginRequest
 import marketing.mama.domain.user.dto.request.SignUpRequest
+import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
 import marketing.mama.domain.user.dto.response.LoginResponse
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.repository.UserRepository
@@ -65,6 +66,8 @@ class UserController(
 
         return ResponseEntity.ok(userProfile)
     }
+
+
     @Operation(summary = "로그아웃")
     @PostMapping("/logout")
     fun logout(request: HttpServletRequest, response: HttpServletResponse): ResponseEntity<String> {
@@ -72,6 +75,13 @@ class UserController(
         return ResponseEntity.ok("로그아웃 되었습니다.")
     }
 
-
+    @Operation(summary = "프로필 수정")
+    @PutMapping("/profile")
+    fun updateProfile(
+        @Valid @RequestBody request: UpdateUserProfileRequest
+    ): ResponseEntity<UserResponse> {
+        val updatedUser = userService.updateUserProfile(request)
+        return ResponseEntity.ok(updatedUser)
+    }
 
 }
