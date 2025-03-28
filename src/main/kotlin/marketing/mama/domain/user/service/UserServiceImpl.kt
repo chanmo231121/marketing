@@ -16,16 +16,13 @@ import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.model.User
 import marketing.mama.domain.user.repository.UserRepository
 import marketing.mama.global.exception.ModelNotFoundException
-import marketing.mama.global.exception.UnauthorizedException
 import marketing.mama.global.exception.WithdrawalCancellationException
 import marketing.mama.infra.security.UserPrincipal
 import marketing.mama.infra.security.jwt.JwtPlugin
 import org.springframework.data.repository.findByIdOrNull
-import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
-import java.util.*
 
 
 @Service
