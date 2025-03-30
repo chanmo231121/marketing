@@ -67,10 +67,17 @@ dependencies {
     implementation ("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     implementation ("com.google.code.gson:gson:2.8.8")
-
     implementation("org.jsoup:jsoup:1.19.1")
     implementation ("com.squareup.okhttp3:okhttp:4.9.3")
     implementation ("org.json:json:20210307")
+
+
+    implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
+    implementation("io.github.bonigarcia:webdrivermanager:5.6.3")
+//test
+    testImplementation("io.mockk:mockk:1.13.8") // 최신 안정 버전
+    testImplementation("org.junit.jupiter:junit-jupiter:5.10.0") // JUnit5 사용 시
+    testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
 }
 
 noArg {
