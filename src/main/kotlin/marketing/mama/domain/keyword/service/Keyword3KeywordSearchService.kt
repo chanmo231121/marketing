@@ -13,6 +13,7 @@ import org.openqa.selenium.interactions.Actions
 import org.openqa.selenium.support.ui.ExpectedConditions
 import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Service
+import java.io.File
 import java.time.Duration
 import kotlin.random.Random
 
@@ -45,56 +46,73 @@ class Keyword3KeywordSearchService {
     }
 
     fun loginWithCredentials(username: String, password: String): Map<String, String> {
-        // headless 옵션 활성화(EC2 등 서버 환경에서는 headless 모드를 사용하는 것이 일반적입니다.)
-        val options = ChromeOptions()
-        val uniqueUserDataDir = "/tmp/chrome-profile-${System.currentTimeMillis()}"
-        options.addArguments(
-            "--headless",
-            "--disable-gpu",
-            "--window-size=1920,1080",
-            "--user-data-dir=$uniqueUserDataDir"
-        )
+        // 고유한 user-data-dir 생성
+        val uniqueUserDataDir = File("/tmp/chrome-profile-${System.currentTimeMillis()}").apply { mkdirs() }
+
+        val options = ChromeOptions().apply {
+            addArguments(
+                "--headless",
+                "--disable-gpu",
+                "--window-size=1920,1080",
+                "--no-sandbox",
+                "--remote-allow-origins=*",
+                "--disable-dev-shm-usage",
+                "--user-data-dir=${uniqueUserDataDir.absolutePath}"
+            )
+        }
+
         WebDriverManager.chromedriver().setup()
         val driver: WebDriver = ChromeDriver(options)
         val wait = WebDriverWait(driver, Duration.ofSeconds(30))
 
-        // 광고 관리 페이지에 접속하여 "네이버 아이디로 로그인" 버튼이 보이도록 합니다.
-        driver.get("https://manage.searchad.naver.com/front")
-        wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
-        Thread.sleep(Random.nextLong(1000, 6000)) // 버튼 클릭 전 2초 대기
-        val naverLoginBtn = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button.naver_login_btn")))
-        naverLoginBtn.click()
+        try {
+            // 광고 관리 페이지에 접속하여 "네이버 아이디로 로그인" 버튼이 보이도록 합니다.
+            driver.get("https://manage.searchad.naver.com/front")
+            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
+            Thread.sleep(Random.nextLong(1000, 6000))
+            val naverLoginBtn = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button.naver_login_btn")))
+            naverLoginBtn.click()
 
-        // 네이버 로그인창에서 아이디와 비밀번호 입력 필드가 나타납니다.
-        val idElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("id")))
-        simulateTyping(idElem, username, driver)
-        val pwElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("pw")))
-        simulateTyping(pwElem, password, driver)
+            // 네이버 로그인창에서 아이디와 비밀번호 입력
+            val idElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("id")))
+            simulateTyping(idElem, username, driver)
+            val pwElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("pw")))
+            simulateTyping(pwElem, password, driver)
 
-        // 로그인 버튼 클릭 전 1초 대기 후 클릭
-        val loginSubmitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("log.login")))
-        Thread.sleep(Random.nextLong(500, 1000))
-        loginSubmitBtn.click()
+            val loginSubmitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("log.login")))
+            Thread.sleep(Random.nextLong(500, 1000))
+            loginSubmitBtn.click()
 
-        Thread.sleep(Random.nextLong(4000, 5000))
+            Thread.sleep(Random.nextLong(4000, 5000))
 
-        // 대신, 광고 관리 페이지가 완전히 로드되고 로그인 완료를 나타내는 요소가 나타날 때까지 기다립니다.
-        driver.get("https://manage.searchad.naver.com/front")
-        wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
-        val accountIdElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("span.account_id em")))
-        accountId = accountIdElem.text
+            // 로그인 후 광고 관리 페이지 로딩
+            driver.get("https://manage.searchad.naver.com/front")
+            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
+            val accountIdElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("span.account_id em")))
+            val accountId = accountIdElem.text
 
-        val js = driver as JavascriptExecutor
-        val localStorage = js.executeScript("return window.localStorage.getItem('tokens');") as? String
-        val mapper = jacksonObjectMapper()
-        val tokens = mapper.readTree(localStorage)
-        val firstKey = tokens.fieldNames().asSequence().firstOrNull()
-        token = tokens[firstKey]?.get("bearer")?.asText()
+            val js = driver as JavascriptExecutor
+            val localStorage = js.executeScript("return window.localStorage.getItem('tokens');") as? String
+            val mapper = jacksonObjectMapper()
+            val tokens = mapper.readTree(localStorage)
+            val firstKey = tokens.fieldNames().asSequence().firstOrNull()
+            val token = tokens[firstKey]?.get("bearer")?.asText()
 
-        driver.quit()
-
-        return mapOf("token" to token.orEmpty(), "accountId" to accountId.orEmpty())
+            return mapOf("token" to token.orEmpty(), "accountId" to accountId.orEmpty())
+        } finally {
+            try {
+                driver.quit()
+            } catch (e: Exception) {
+                println("⚠️ driver 종료 중 예외: ${e.message}")
+            }
+            try {
+                uniqueUserDataDir.deleteRecursively()
+            } catch (e: Exception) {
+                println("⚠️ 임시 디렉토리 삭제 실패: ${e.message}")
+            }
+        }
     }
+
 
     fun fetchKeywordData(token: String, keywords: List<String>): List<KeywordResult> {
         val client = OkHttpClient()
