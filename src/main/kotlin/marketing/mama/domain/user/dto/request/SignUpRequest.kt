@@ -40,7 +40,7 @@ data class SignUpRequest(
             email = email,
             password = password,
             introduction = introduction,
-            tlno = tlno,
+            tlno = tlno.replace(Regex("[^0-9]"), ""),
             status = Status.NORMAL,
 
         )

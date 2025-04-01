@@ -27,6 +27,13 @@ class GlobalExceptionHandler {
             .body(ErrorResponse("닉네임이 사용중입니다"))
     }
 
+    @ExceptionHandler(CustomException::class)
+    fun handleCustomException(ex: CustomException): ResponseEntity<Map<String, Any>> {
+        return ResponseEntity.status(ex.status).body(
+            mapOf("message" to ex.message)
+        )
+    }
+
     @ExceptionHandler(UnauthorizedException::class)
     fun handleUnauthorizedException(e: UnauthorizedException): ResponseEntity<ErrorResponse> {
         return ResponseEntity

@@ -11,8 +11,9 @@ import kotlin.reflect.KClass
 @Retention(AnnotationRetention.RUNTIME)
 @Target(allowedTargets = [AnnotationTarget.FIELD, AnnotationTarget.PROPERTY, AnnotationTarget.VALUE_PARAMETER]
 )
+
 annotation class ValidTlno(
-    val message: String = "번호는 -포함 13자리입니다 . 숫자(0~9)로 구성 되어야 합니다.",
+    val message: String = "전화번호는 숫자 11자리여야 합니다. (예: 01012345678 또는 010-1234-5678)",
     val groups: Array<KClass<out Any>> = [],
     val payload: Array<KClass<out Payload>> = []
 )

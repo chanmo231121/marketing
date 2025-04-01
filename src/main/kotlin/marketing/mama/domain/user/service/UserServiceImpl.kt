@@ -12,9 +12,11 @@ import marketing.mama.domain.user.dto.request.SignUpRequest
 import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
 import marketing.mama.domain.user.dto.response.LoginResponse
 import marketing.mama.domain.user.dto.response.UserResponse
+import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.model.User
 import marketing.mama.domain.user.repository.UserRepository
+import marketing.mama.global.exception.CustomException
 import marketing.mama.global.exception.ModelNotFoundException
 import marketing.mama.global.exception.WithdrawalCancellationException
 import marketing.mama.infra.security.UserPrincipal
@@ -54,6 +56,10 @@ class UserServiceImpl(
         if (!passwordEncoder.matches(request.password, user.password)) {
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
+
+        if (user.status == Status.PENDING_APPROVAL) {
+            throw CustomException("승인 대기중인 계정입니다. 관리자의 승인을 기다려주세요.")
+        }
 /*        if (user.verificationCode != request.verificationCode) {
             throw IllegalArgumentException("이메일 인증 코드가 일치하지 않습니다.")
         }*/
@@ -83,6 +89,8 @@ class UserServiceImpl(
         response.setHeader("Authorization", "Bearer $accessToken")
         return LoginResponse(
             name = user.name,
+            role = user.role,
+            stats = user.status
         )
     }
 
@@ -146,7 +154,6 @@ class UserServiceImpl(
     @Transactional
     override fun signUp(request: SignUpRequest): UserResponse {
 
-
         if (userRepository.existsByEmail(request.email)) {
             throw IllegalStateException("이메일이 이미 사용중입니다.")
         }
@@ -157,10 +164,13 @@ class UserServiceImpl(
             throw IllegalStateException("이름이 이미 사용중입니다.")
         }
 
-        // 기본 이미지 URL로 대체
         // 비밀번호 해싱
         val hashedPassword = passwordEncoder.encode(request.password)
-        // 사용자 정보 생성
+
+        // ✅ 리더일 경우 PENDING_APPROVAL 상태로 설정
+        val status = if (request.role == Role.프로) Status.PENDING_APPROVAL else Status.NORMAL
+
+        // 사용자 생성
         val user = User(
             role = request.role,
             name = request.name,
@@ -168,18 +178,11 @@ class UserServiceImpl(
             password = hashedPassword,
             introduction = request.introduction,
             tlno = request.tlno,
-            status = Status.NORMAL,
+            status = status
         )
 
-        // 사용자 정보 저장
         val savedUser = userRepository.save(user)
-        // 이메일 인증 코드 생성 (하지만 이메일 전송은 하지 않음)
-/*        val verificationCode = UUID.randomUUID().toString().substring(0, 6)
-        savedUser.verificationCode = verificationCode
-        userRepository.save(savedUser)*/
 
-        // 이메일 전송 제거
-        // emailService.sendVerificationEmail(savedUser.email, verificationCode)
         return UserResponse.from(savedUser)
     }
 

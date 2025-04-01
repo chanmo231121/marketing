@@ -2,6 +2,7 @@ package marketing.mama.domain.keyword.service
 
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import io.github.bonigarcia.wdm.WebDriverManager
+import jakarta.annotation.PostConstruct
 import marketing.mama.domain.keyword.dto.KeywordResult
 import marketing.mama.domain.keyword.dto.KeywordTrend
 import okhttp3.OkHttpClient
@@ -22,19 +23,29 @@ class Keyword3KeywordSearchService {
     private var token: String? = null
     private var accountId: String? = null
 
-    /**
-     * 입력 필드에 실제 사용자가 타이핑하는 것처럼 문자 하나씩 입력하는 함수.
-     * Selenium Actions를 사용해 요소에 마우스 이동 및 클릭 후 타이핑하고,
-     * 각 문자 사이에 0.5초 ~ 1초 사이의 랜덤 지연과 10% 확률로 오타 후 수정 동작을 추가합니다.
-     */
+    @PostConstruct
+    fun cleanOldChromeProfiles() {
+        val tmpDir = File("/tmp")
+        tmpDir.listFiles { file ->
+            file.isDirectory && file.name.startsWith("chrome-profile-") &&
+                    file.lastModified() < System.currentTimeMillis() - 1000 * 60 * 60
+        }?.forEach {
+            try {
+                println("🧹 오래된 디렉토리 삭제: ${it.absolutePath}")
+                it.deleteRecursively()
+            } catch (e: Exception) {
+                println("⚠️ 삭제 실패: ${e.message}")
+            }
+        }
+    }
+
     private fun simulateTyping(element: WebElement, text: String, driver: WebDriver) {
         val actions = Actions(driver)
-        // 요소로 마우스 이동 후 클릭하여 포커스 맞춤
         actions.moveToElement(element).click().perform()
         Thread.sleep(Random.nextLong(300, 600))
         for (ch in text) {
             if (Random.nextDouble() < 0.1) {
-                val wrongChar = (('a'..'z').toList() + ('0'..'9').toList()).random().toString()
+                val wrongChar = (('a'..'z') + ('0'..'9')).random().toString()
                 actions.sendKeys(wrongChar).perform()
                 Thread.sleep(Random.nextLong(500, 1000))
                 actions.sendKeys(Keys.BACK_SPACE).perform()
@@ -46,7 +57,6 @@ class Keyword3KeywordSearchService {
     }
 
     fun loginWithCredentials(username: String, password: String): Map<String, String> {
-        // 고유한 user-data-dir 생성
         val uniqueUserDataDir = File("/tmp/chrome-profile-${System.currentTimeMillis()}").apply { mkdirs() }
 
         val options = ChromeOptions().apply {
@@ -67,31 +77,43 @@ class Keyword3KeywordSearchService {
         val wait = WebDriverWait(driver, Duration.ofSeconds(30))
 
         try {
-            // 광고 관리 페이지에 접속하여 "네이버 아이디로 로그인" 버튼이 보이도록 합니다.
+            println("▶ 광고 관리 페이지 접속 중...")
             driver.get("https://manage.searchad.naver.com/front")
-            Thread.sleep(8000)
-            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
-            Thread.sleep(Random.nextLong(4000, 5000))
+            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState") == "complete" }
+            println("✅ 페이지 로딩 완료: ${driver.currentUrl}")
+
+            Thread.sleep(Random.nextLong(1000, 6000))
+            println("▶ 네이버 로그인 버튼 대기 중...")
             val naverLoginBtn = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button.naver_login_btn")))
+            println("✅ 네이버 로그인 버튼 클릭")
             naverLoginBtn.click()
 
-            // 네이버 로그인창에서 아이디와 비밀번호 입력
+            println("▶ 로그인 페이지 로딩 중...")
             val idElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("id")))
             simulateTyping(idElem, username, driver)
+
             val pwElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.id("pw")))
             simulateTyping(pwElem, password, driver)
 
             val loginSubmitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("log.login")))
-            Thread.sleep(Random.nextLong(4000, 5000))
+            Thread.sleep(Random.nextLong(500, 1000))
+            println("✅ 로그인 버튼 클릭")
             loginSubmitBtn.click()
 
             Thread.sleep(Random.nextLong(4000, 5000))
-
-            // 로그인 후 광고 관리 페이지 로딩
+            println("▶ 로그인 후 광고관리 페이지 재접속 중...")
             driver.get("https://manage.searchad.naver.com/front")
-            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
-            val accountIdElem = wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("span.account_id em")))
+            wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState") == "complete" }
+            println("✅ 재접속 완료: ${driver.currentUrl}")
+
+            val accountIdElem = try {
+                wait.until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("span.account_id em")))
+            } catch (e: TimeoutException) {
+                println("❌ 로그인 실패 또는 계정 식별자 로딩 실패")
+                throw IllegalStateException("로그인에 실패했거나 계정 정보를 불러오지 못했습니다.")
+            }
             val accountId = accountIdElem.text
+            println("✅ 로그인 성공, accountId: $accountId")
 
             val js = driver as JavascriptExecutor
             val localStorage = js.executeScript("return window.localStorage.getItem('tokens');") as? String
@@ -99,9 +121,11 @@ class Keyword3KeywordSearchService {
             val tokens = mapper.readTree(localStorage)
             val firstKey = tokens.fieldNames().asSequence().firstOrNull()
             val token = tokens[firstKey]?.get("bearer")?.asText()
+            println("✅ 토큰 추출 완료")
 
             return mapOf("token" to token.orEmpty(), "accountId" to accountId.orEmpty())
         } finally {
+            println("🧹 드라이버 종료 및 프로필 삭제")
             try {
                 driver.quit()
             } catch (e: Exception) {
@@ -114,7 +138,6 @@ class Keyword3KeywordSearchService {
             }
         }
     }
-
 
     fun fetchKeywordData(token: String, keywords: List<String>): List<KeywordResult> {
         val client = OkHttpClient()
