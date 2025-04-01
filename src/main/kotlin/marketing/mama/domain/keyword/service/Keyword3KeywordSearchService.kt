@@ -47,7 +47,13 @@ class Keyword3KeywordSearchService {
     fun loginWithCredentials(username: String, password: String): Map<String, String> {
         // headless 옵션 활성화(EC2 등 서버 환경에서는 headless 모드를 사용하는 것이 일반적입니다.)
         val options = ChromeOptions()
-        options.addArguments( "--headless","--disable-gpu", "--window-size=1920,1080")
+        val uniqueUserDataDir = "/tmp/chrome-profile-${System.currentTimeMillis()}"
+        options.addArguments(
+            "--headless",
+            "--disable-gpu",
+            "--window-size=1920,1080",
+            "--user-data-dir=$uniqueUserDataDir"
+        )
         WebDriverManager.chromedriver().setup()
         val driver: WebDriver = ChromeDriver(options)
         val wait = WebDriverWait(driver, Duration.ofSeconds(30))
