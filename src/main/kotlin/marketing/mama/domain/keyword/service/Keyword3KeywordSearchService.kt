@@ -57,6 +57,7 @@ class Keyword3KeywordSearchService {
                 "--no-sandbox",
                 "--remote-allow-origins=*",
                 "--disable-dev-shm-usage",
+                "--disable-blink-features=AutomationControlled",
                 "--user-data-dir=${uniqueUserDataDir.absolutePath}"
             )
         }
@@ -68,8 +69,9 @@ class Keyword3KeywordSearchService {
         try {
             // 광고 관리 페이지에 접속하여 "네이버 아이디로 로그인" 버튼이 보이도록 합니다.
             driver.get("https://manage.searchad.naver.com/front")
+            Thread.sleep(8000)
             wait.until { (driver as JavascriptExecutor).executeScript("return document.readyState").toString() == "complete" }
-            Thread.sleep(Random.nextLong(1000, 6000))
+            Thread.sleep(Random.nextLong(4000, 5000))
             val naverLoginBtn = wait.until(ExpectedConditions.elementToBeClickable(By.cssSelector("button.naver_login_btn")))
             naverLoginBtn.click()
 
@@ -80,7 +82,7 @@ class Keyword3KeywordSearchService {
             simulateTyping(pwElem, password, driver)
 
             val loginSubmitBtn = wait.until(ExpectedConditions.elementToBeClickable(By.id("log.login")))
-            Thread.sleep(Random.nextLong(500, 1000))
+            Thread.sleep(Random.nextLong(4000, 5000))
             loginSubmitBtn.click()
 
             Thread.sleep(Random.nextLong(4000, 5000))
