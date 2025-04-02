@@ -40,7 +40,11 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0-RC2")
     implementation("org.springframework.cloud:spring-cloud-starter-aws:2.0.1.RELEASE")
 
-    runtimeOnly("com.h2database:h2")
+    // ✅ PostgreSQL 의존성 (JDBC 드라이버)
+    implementation("org.postgresql:postgresql:42.7.3")
+    //runtimeOnly ("org.postgresql:postgresql")
+    // ✅ 주석 처리된 H2 (개발용 임시 DB)
+     // runtimeOnly("com.h2database:h2")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
@@ -49,7 +53,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.kotest.extensions:kotest-extensions-spring:1.1.3")
     testImplementation("org.postgresql:postgresql")
-    implementation("org.postgresql:postgresql:42.2.15")
+
 
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")

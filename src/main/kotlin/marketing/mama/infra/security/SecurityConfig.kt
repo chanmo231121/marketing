@@ -29,7 +29,13 @@ class SecurityConfig(
             .formLogin { it.disable() }
             .csrf { it.disable() }
             .cors { it.disable() }
-            .headers { it.frameOptions { foc -> foc.disable() } }
+            .headers {
+
+                it.frameOptions { foc -> foc.disable() }
+                it.contentSecurityPolicy { csp -> csp.policyDirectives("default-src * 'unsafe-inline' 'unsafe-eval' data: blob:") }
+            }
+
+
             .authorizeHttpRequests {
                 it.requestMatchers(
 
