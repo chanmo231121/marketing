@@ -11,7 +11,8 @@ data class UserResponse(
     var introduction: String,
     var tlno: String,
     var role: String,
-    var createdAt: String? // ZonedDateTime 대신 String
+    var createdAt: String?,// ZonedDateTime 대신 String
+    val rejectReason: String? = null
 ) {
     companion object {
         private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
@@ -24,7 +25,8 @@ data class UserResponse(
             tlno = user.tlno,
             role = user.role.name,
             nickname = user.name,
-            createdAt = user.createdAt.format(formatter)  // String 포맷으로 반환
+            createdAt = user.createdAt.format(formatter) , // String 포맷으로 반환
+            rejectReason = user.rejectReason
         )
     }
 }

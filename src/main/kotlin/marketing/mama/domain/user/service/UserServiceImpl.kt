@@ -168,7 +168,10 @@ class UserServiceImpl(
         val hashedPassword = passwordEncoder.encode(request.password)
 
         // ✅ 리더일 경우 PENDING_APPROVAL 상태로 설정
-        val status = if (request.role == Role.프로) Status.PENDING_APPROVAL else Status.NORMAL
+        val status = if (request.role == Role.프로 || request.role == Role.관리자) Status.PENDING_APPROVAL else Status.NORMAL
+
+        // ✅ 전화번호에서 하이픈 제거
+        val cleanedTlno = request.tlno.replace(Regex("[^0-9]"), "")
 
         // 사용자 생성
         val user = User(
@@ -177,7 +180,7 @@ class UserServiceImpl(
             email = request.email,
             password = hashedPassword,
             introduction = request.introduction,
-            tlno = request.tlno,
+            tlno = cleanedTlno,
             status = status
         )
 

@@ -17,5 +17,5 @@ interface UserRepository:JpaRepository<User, Long> {
     //fun findByNickname(nickname: String): User?
     fun existsByname(name: String): Boolean
     fun findAllByRoleAndStatus(role: Role, status: Status): List<User>
-
+    fun findAllByStatus(status: Status): List<User>
 }

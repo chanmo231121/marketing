@@ -24,6 +24,8 @@ class User(
     @Column(name = "tlno")
     var tlno: String,
 
+    @Column(nullable = true)
+    var rejectReason: String? = null,
 /*    @Column(name = "verification_code")
     var verificationCode: String? = null,*/
 
