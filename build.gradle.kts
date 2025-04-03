@@ -40,11 +40,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0-RC2")
     implementation("org.springframework.cloud:spring-cloud-starter-aws:2.0.1.RELEASE")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310")
-    // ✅ PostgreSQL 의존성 (JDBC 드라이버)
     implementation("org.postgresql:postgresql:42.7.3")
-    runtimeOnly ("org.postgresql:postgresql")
-    // ✅ 주석 처리된 H2 (개발용 임시 DB)
-     // runtimeOnly("com.h2database:h2")
+    runtimeOnly("org.postgresql:postgresql")
     runtimeOnly("io.jsonwebtoken:jjwt-impl:0.12.3")
     runtimeOnly("io.jsonwebtoken:jjwt-jackson:0.12.3")
 
@@ -62,15 +59,18 @@ dependencies {
     implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
     implementation("io.github.bonigarcia:webdrivermanager:5.6.3")
 
-    testRuntimeOnly("com.h2database:h2")
+    // ✅ 테스트 전용 h2만 명시적으로 추가
     testImplementation("com.h2database:h2")
+
+    // ✅ starter-test에서 h2 제외
+    testImplementation("org.springframework.boot:spring-boot-starter-test") {
+        exclude(group = "com.h2database", module = "h2")
+    }
+
     testImplementation("io.mockk:mockk:1.13.8")
     testImplementation("org.junit.jupiter:junit-jupiter:5.10.0")
     testImplementation("com.squareup.okhttp3:mockwebserver:4.12.0")
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("io.kotest.extensions:kotest-extensions-spring:1.1.3")
-
-
 }
 
 noArg {
