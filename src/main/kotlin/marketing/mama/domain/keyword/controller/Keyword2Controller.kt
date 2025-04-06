@@ -3,6 +3,7 @@ package marketing.mama.domain.keyword.controller
 import io.swagger.v3.oas.annotations.Operation
 import marketing.mama.domain.keyword.service.Keyword2Service
 import org.springframework.http.ResponseEntity
+import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
 
 @RestController
@@ -13,6 +14,7 @@ class Keyword2Controller(
     @Operation(summary = "키워드 연관검색")
     @CrossOrigin
     @GetMapping("/api/keyword2")
+    @PreAuthorize("isAuthenticated()")
     fun getKeywords(
         @RequestParam("hintKeyword") hintKeyword: String
     ): ResponseEntity<List<Map<String, Any>>> {

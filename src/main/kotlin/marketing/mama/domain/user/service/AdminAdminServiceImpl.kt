@@ -5,9 +5,11 @@ import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.repository.UserRepository
+import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
+import java.time.LocalDateTime
 
 @Service
 class AdminAdminServiceImpl(
@@ -18,20 +20,19 @@ class AdminAdminServiceImpl(
         val admins = userRepository.findAllByRoleAndStatus(Role.관리자, Status.PENDING_APPROVAL)
         return admins.map { UserResponse.from(it) }
     }
+
     @Transactional
     override fun approveAdmin(userId: Long): String {
-        val user = userRepository.findById(userId)
-            .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다") }
-
-        if (user.role != Role.관리자) {
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "관리자 유저만 승인할 수 있습니다")
-        }
+        val user = userRepository.findByIdOrNull(userId)
+            ?: throw IllegalArgumentException("해당 유저를 찾을 수 없습니다")
 
         user.status = Status.NORMAL
+        user.approvedAt = user.approvedAt ?: LocalDateTime.now()
+        user.lastApprovedAt = LocalDateTime.now()
+
         userRepository.save(user)
         return "관리자 승인 완료"
     }
-
     @Transactional
     override fun rejectAdmin(userId: Long, reason: String): String {
         val user = userRepository.findById(userId)
@@ -67,4 +68,14 @@ class AdminAdminServiceImpl(
 
         return "관리자 유저 복구 완료"
     }
+
+    override fun getApprovedAdminsAndPros(): List<UserResponse> {
+        val users = userRepository.findAllByStatusAndRoleIn(
+            Status.NORMAL,
+            listOf(Role.관리자, Role.프로)
+        )
+        return users.map { UserResponse.from(it) }
+    }
+
+
 }

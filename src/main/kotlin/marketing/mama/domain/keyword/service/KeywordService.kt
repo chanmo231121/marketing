@@ -3,6 +3,8 @@ package marketing.mama.domain.keyword.service
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import org.springframework.beans.factory.annotation.Value
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService
 import org.springframework.stereotype.Service
 import java.util.*
 import java.util.concurrent.*
@@ -12,23 +14,34 @@ import javax.crypto.spec.SecretKeySpec
 @Service
 class KeywordService {
 
-    private val baseUrl = "https://api.naver.com"
-    private val apiKey = "010000000052c2af4a5d6cdbeb92d376975b4ef04b3813214afa7dd4a3eaca3df3d7d75ebe"
-    private val secretKey = "AQAAAAC9WaMhLS9PP5Bao8EzL8dgycdW6peurw4EN108IfvRQw=="
-    private val customerId = "3399751"
-    private val client = OkHttpClient()
+    @Value("\${naverapi.base-url}")
+    private lateinit var baseUrl: String
 
+    @Value("\${naverapi.api-key}")
+    private lateinit var apiKey: String
+
+    @Value("\${naverapi.secret-key}")
+    private lateinit var secretKey: String
+
+    @Value("\${naverapi.customer-id}")
+    private lateinit var customerId: String
+
+    private val client = OkHttpClient()
     private val threadCount = Runtime.getRuntime().availableProcessors().coerceIn(2, 6)
     private val executor = Executors.newFixedThreadPool(threadCount)
 
-    fun getKeywords(hintKeyword: String): List<Map<String, Any>> {
-        val keywords = hintKeyword.split(",").map { it.trim() }.filter { it.isNotEmpty() }
+    fun getKeywords(hintKeywords: List<String>): List<Map<String, Any>> {
         val resultList = Collections.synchronizedList(mutableListOf<Map<String, Any>>())
 
-        val futures = keywords.map { keyword ->
+        val futures = hintKeywords.map { keyword ->
             executor.submit {
-                fetchKeywordData(keyword)?.let {
-                    resultList.add(it)
+                try {
+                    val result = fetchKeywordData(keyword)
+                    if (result != null) {
+                        resultList.add(result)
+                    }
+                } catch (e: Exception) {
+                    println("❌ 처리 중 오류 발생: ${e.message}")
                 }
             }
         }
@@ -37,7 +50,7 @@ class KeywordService {
             try {
                 it.get()
             } catch (e: Exception) {
-                println("오류 발생: ${e.message}")
+                println("❗ Future 처리 실패: ${e.message}")
             }
         }
 
@@ -54,13 +67,12 @@ class KeywordService {
             makeRequest(url, headers).use { response ->
                 when (response.code) {
                     429 -> {
-                        println("API 호출 제한 발생, 재시도: ${attempt + 1}")
+                        println("⚠️ API 호출 제한 발생, 재시도: ${attempt + 1}")
                         Thread.sleep(1000L * (attempt + 1))
                     }
                     200 -> {
                         val jsonResponse = JSONObject(response.body?.string() ?: "")
                         if (!jsonResponse.has("keywordList") || jsonResponse.getJSONArray("keywordList").length() == 0) {
-                            println("검색 결과 없음: $keyword")
                             return null
                         }
 
@@ -77,21 +89,16 @@ class KeywordService {
                             "월평균노출광고수" to firstKeyword.optInt("plAvgDepth", 0)
                         )
                     }
-                    else -> {
-                        println("API 요청 실패: ${response.code}")
-                        return null
-                    }
                 }
             }
         }
-        println("최대 재시도 초과: $keyword")
+
         return null
     }
 
     private fun getHeader(method: String, uri: String, apiKey: String, secretKey: String, customerId: String): Map<String, String> {
         val timestamp = System.currentTimeMillis().toString()
         val signature = Signature.generate(timestamp, method, uri, secretKey)
-
         return mapOf(
             "Content-Type" to "application/json; charset=UTF-8",
             "X-Timestamp" to timestamp,

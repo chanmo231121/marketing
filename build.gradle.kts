@@ -58,6 +58,7 @@ dependencies {
 
     implementation("org.seleniumhq.selenium:selenium-java:4.18.1")
     implementation("io.github.bonigarcia:webdrivermanager:5.6.3")
+    implementation("com.aventrix.jnanoid:jnanoid:2.0.0")
 
     // ✅ 테스트 전용 h2만 명시적으로 추가
     testImplementation("com.h2database:h2")

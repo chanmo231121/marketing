@@ -16,9 +16,15 @@ class RefreshTokenController(
 ) {
 
     @PostMapping("/refresh")
-    fun refreshAccessToken(@RequestHeader("Authorization") refreshToken: String, response: HttpServletResponse): ResponseEntity<String> {
-        refreshTokenService.refreshAccessToken(refreshToken, response)
-        return ResponseEntity.ok().build()
+    fun refreshAccessToken(
+        @RequestHeader("Authorization") refreshToken: String,
+        response: HttpServletResponse
+    ): ResponseEntity<String> {
+        val tokenOnly = refreshToken.removePrefix("Bearer ").trim()
+        val newToken = refreshTokenService.refreshAccessToken(tokenOnly, response)
+        return ResponseEntity.ok()
+            .header("X-New-Access-Token", newToken)
+            .body("새로운 토큰 발급 완료")
     }
 
 

@@ -3,6 +3,7 @@ package marketing.mama.domain.keyword.service
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONObject
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.stereotype.Service
 import java.util.Base64
 import javax.crypto.Mac
@@ -11,10 +12,18 @@ import javax.crypto.spec.SecretKeySpec
 @Service
 class Keyword2Service {
 
-    private val baseUrl = "https://api.naver.com"
-    private val apiKey = "010000000052c2af4a5d6cdbeb92d376975b4ef04b3813214afa7dd4a3eaca3df3d7d75ebe"
-    private val secretKey = "AQAAAAC9WaMhLS9PP5Bao8EzL8dgycdW6peurw4EN108IfvRQw=="
-    private val customerId = "3399751"
+    @Value("\${naverapi.base-url}")
+    private lateinit var baseUrl: String
+
+    @Value("\${naverapi.api-key}")
+    private lateinit var apiKey: String
+
+    @Value("\${naverapi.secret-key}")
+    private lateinit var secretKey: String
+
+    @Value("\${naverapi.customer-id}")
+    private lateinit var customerId: String
+
     private val client = OkHttpClient() // 재사용 클라이언트
 
     fun getKeywords(hintKeywords: List<String>): List<Map<String, Any>> {

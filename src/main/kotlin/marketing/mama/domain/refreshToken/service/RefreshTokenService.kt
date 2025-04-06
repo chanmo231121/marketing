@@ -10,5 +10,5 @@ interface RefreshTokenService {
 
     fun saveRefreshToken(user: User, refreshToken: String)
     fun findRefreshToken(user: User): String?
-    fun refreshAccessToken(refreshToken: String?, response: HttpServletResponse)
+    fun refreshAccessToken(refreshToken: String?, response: HttpServletResponse): String
 }

@@ -1,7 +1,9 @@
 package marketing.mama.domain.user.controller
 
+import marketing.mama.domain.user.dto.request.ExtendUserRequest
 import marketing.mama.domain.user.dto.request.RejectUserRequest
 import marketing.mama.domain.user.dto.response.UserResponse
+import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.service.AdminUserService
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
@@ -64,4 +66,29 @@ class AdminUserController(
     fun restorePro(@PathVariable userId: Long): ResponseEntity<String> {
         return ResponseEntity.ok(adminUserService.restorePro(userId))
     }
+
+    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    @GetMapping("/pro")
+    fun getApprovedProUsers(): ResponseEntity<List<UserResponse>> {
+        val users = adminUserService.getApprovedProUsers()
+        return ResponseEntity.ok(users)
+    }
+
+    // ✅ [GET] 재승인 대기 중인 프로 유저 목록 조회
+    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    @GetMapping("/reapproval-pending-pros")
+    fun getReapprovalPendingPros(): ResponseEntity<List<UserResponse>> {
+        return ResponseEntity.ok(adminUserService.getReapprovalPendingPros())
+    }
+
+    @PutMapping("/extend/{userId}")
+    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    fun extendUserApproval(
+        @PathVariable userId: Long,
+        @RequestBody request: ExtendUserRequest
+    ): ResponseEntity<String> {
+        adminUserService.extendApproval(userId, request)
+        return ResponseEntity.ok("승인 기간이 연장되었습니다.")
+    }
+
 }

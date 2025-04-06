@@ -26,23 +26,18 @@ class RefreshTokenServiceImpl(
         return refreshTokenOptional.orElse(null)?.token
     }
 
-    override fun refreshAccessToken(refreshToken: String?, response: HttpServletResponse) {
-        // 리프레시 토큰이 존재하지 않으면 종료
-        if (refreshToken.isNullOrEmpty()) {
-            return
-        }
-        // 현재 사용자 정보 가져오기
-        val userPrincipal = SecurityContextHolder.getContext().authentication.principal as? UserPrincipal
-        // 사용자 정보가 없으면 종료
-        if (userPrincipal == null) {
-            return
-        }
-        // 사용자의 정보에서 필요한 정보 추출
-        val userId = userPrincipal.id.toString()
-        val userEmail = userPrincipal.email
-        val userRoles = userPrincipal.authorities.map { it.authority.removePrefix("ROLE_") }
-        // 새로운 액세스 토큰 생성
-       jwtPlugin.generateAccessToken(userId, userEmail, userRoles.toString())
+    override fun refreshAccessToken(refreshToken: String?, response: HttpServletResponse): String {
+        if (refreshToken.isNullOrEmpty()) throw RuntimeException("리프레시 토큰 없음")
+
+        val refreshEntity = refreshTokenRepository.findByToken(refreshToken)
+            .orElseThrow { RuntimeException("해당 리프레시 토큰 없음") }
+
+        val user = refreshEntity.user
+        val newAccessToken = jwtPlugin.generateAccessToken(user.id.toString(), user.email, user.role.name)
+
+        // 새 access token을 헤더로 추가
+        response.setHeader("X-New-Access-Token", newAccessToken)
+        return newAccessToken
     }
 }
 

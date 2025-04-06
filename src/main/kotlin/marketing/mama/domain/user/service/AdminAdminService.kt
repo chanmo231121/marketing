@@ -7,4 +7,7 @@ interface AdminAdminService {
     fun approveAdmin(userId: Long): String
     fun rejectAdmin(userId: Long, reason: String): String
     fun getRejectedAdmins(): List<UserResponse>
-    fun restoreAdmin(userId: Long): String}
+    fun restoreAdmin(userId: Long): String
+    fun getApprovedAdminsAndPros(): List<UserResponse>
+
+}

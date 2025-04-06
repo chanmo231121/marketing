@@ -48,4 +48,10 @@ class AdminApprovalController(
     fun restoreAdmin(@PathVariable userId: Long): ResponseEntity<String> {
         return ResponseEntity.ok(adminAdminService.restoreAdmin(userId))
     }
+
+    @PreAuthorize("hasRole('개발자')")
+    @GetMapping("/approved")
+    fun getApprovedAdminsAndPros(): ResponseEntity<List<UserResponse>> {
+        return ResponseEntity.ok(adminAdminService.getApprovedAdminsAndPros())
+    }
 }

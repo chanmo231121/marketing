@@ -30,6 +30,7 @@ data class SignUpRequest(
 
     var role: Role,
 
+    var ipAddress: String? = null
 
 ){
 
@@ -42,7 +43,7 @@ data class SignUpRequest(
             introduction = introduction,
             tlno = tlno.replace(Regex("[^0-9]"), ""),
             status = Status.NORMAL,
-
+            ipAddress = ipAddress,
         )
     }
 }

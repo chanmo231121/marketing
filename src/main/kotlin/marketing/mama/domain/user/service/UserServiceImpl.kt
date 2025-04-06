@@ -1,6 +1,7 @@
 package marketing.mama.domain.user.service
 
 
+import com.aventrix.jnanoid.jnanoid.NanoIdUtils
 import jakarta.servlet.http.Cookie
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
@@ -57,12 +58,16 @@ class UserServiceImpl(
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
 
-        if (user.status == Status.PENDING_APPROVAL) {
-            throw CustomException("승인 대기중인 계정입니다. 관리자의 승인을 기다려주세요.")
+        if (user.deviceId != request.deviceId) {
+            throw CustomException("등록되지 않은 기기입니다. 회사에서만 로그인할 수 있습니다.")
         }
-/*        if (user.verificationCode != request.verificationCode) {
-            throw IllegalArgumentException("이메일 인증 코드가 일치하지 않습니다.")
-        }*/
+
+        when (user.status) {
+            Status.PENDING_APPROVAL -> throw CustomException("가입 승인 대기 중입니다. 관리자 승인을 기다려주세요.")
+            Status.PENDING_REAPPROVAL -> throw CustomException("계정 재승인이 필요합니다. 관리자에게 문의해주세요.")
+            else -> {} // 정상 통과
+        }
+
         // 엑세스 토큰 생성
         val accessToken = user.role.let {
             jwtPlugin.generateAccessToken(
@@ -71,7 +76,8 @@ class UserServiceImpl(
                 role = it.name
             )
         }
-        accessToken.let { jwtPlugin.removeTokenFromBlacklist(it) }
+        jwtPlugin.removeTokenFromBlacklist(accessToken)
+
         // 리프레시 토큰 생성 및 DB에 저장
         val refreshToken = user.role.let {
             jwtPlugin.generateRefreshToken(
@@ -81,12 +87,15 @@ class UserServiceImpl(
             )
         }
         refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken.toString()))
-        // 쿠키에 리프레쉬 토큰 추가
+
+        // 쿠키에 리프레시 토큰 추가
         val refreshTokenCookie = Cookie("refresh_token", refreshToken)
         refreshTokenCookie.path = "/"
         response.addCookie(refreshTokenCookie)
+
         // 헤더에 엑세스 토큰 추가
         response.setHeader("Authorization", "Bearer $accessToken")
+
         return LoginResponse(
             name = user.name,
             role = user.role,
@@ -95,13 +104,29 @@ class UserServiceImpl(
     }
 
     override fun logout(response: HttpServletResponse, request: HttpServletRequest) {
-
         val accessToken = jwtPlugin.extractAccessTokenFromRequest(request)
-        // 쿠키에서 엑세스 토큰 삭제
-        jwtPlugin.deleteAccessTokenCookie(response)
-        // 블랙리스트에 엑세스 토큰 추가
+        val refreshToken = request.cookies?.firstOrNull { it.name == "refresh_token" }?.value
+
+        // ✅ access token 블랙리스트 등록
         jwtPlugin.invalidateToken(accessToken)
+
+        // ✅ access token 쿠키 삭제
+        jwtPlugin.deleteAccessTokenCookie(response)
+
+        // ✅ refresh token 쿠키 삭제
+        val refreshTokenCookie = Cookie("refresh_token", null)
+        refreshTokenCookie.path = "/"
+        refreshTokenCookie.maxAge = 0
+        response.addCookie(refreshTokenCookie)
+
+        // ✅ refresh token DB에서 제거
+        refreshToken?.let {
+            refreshTokenRepository.findByToken(it).ifPresent { entity ->
+                refreshTokenRepository.delete(entity)
+            }
+        }
     }
+
 /*
 
 
@@ -172,6 +197,7 @@ class UserServiceImpl(
 
         // ✅ 전화번호에서 하이픈 제거
         val cleanedTlno = request.tlno.replace(Regex("[^0-9]"), "")
+        val generatedDeviceId = NanoIdUtils.randomNanoId()
 
         // 사용자 생성
         val user = User(
@@ -181,7 +207,9 @@ class UserServiceImpl(
             password = hashedPassword,
             introduction = request.introduction,
             tlno = cleanedTlno,
-            status = status
+            status = status,
+            ipAddress = request.ipAddress,
+            deviceId = generatedDeviceId
         )
 
         val savedUser = userRepository.save(user)

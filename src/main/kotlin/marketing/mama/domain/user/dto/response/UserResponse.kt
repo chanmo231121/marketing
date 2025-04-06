@@ -11,22 +11,36 @@ data class UserResponse(
     var introduction: String,
     var tlno: String,
     var role: String,
-    var createdAt: String?,// ZonedDateTime 대신 String
-    val rejectReason: String? = null
+    var createdAt: String?, // ✅ 날짜만 표시
+    val rejectReason: String? = null,
+    val ipAddress: String?,
+    val deviceId: String,
+    val status: String,
+    val approvedUntil: String?, // ← approvedUntilStr → approvedUntil 로 이름 바꿔도 무방
+    val autoExtend: Boolean
 ) {
     companion object {
-        private val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
 
-        fun from(user: User) = UserResponse(
-            id = user.id!!,
-            name = user.name,
-            email = user.email,
-            introduction = user.introduction,
-            tlno = user.tlno,
-            role = user.role.name,
-            nickname = user.name,
-            createdAt = user.createdAt.format(formatter) , // String 포맷으로 반환
-            rejectReason = user.rejectReason
-        )
+        fun from(user: User): UserResponse {
+            val approvedUntilStr = user.approvedUntil?.format(dateFormatter)
+
+            return UserResponse(
+                id = user.id!!,
+                name = user.name,
+                nickname = user.name,
+                email = user.email,
+                introduction = user.introduction,
+                tlno = user.tlno,
+                role = user.role.name,
+                createdAt = user.createdAt.format(dateFormatter),
+                rejectReason = user.rejectReason,
+                ipAddress = user.ipAddress,
+                deviceId = user.deviceId,
+                status = user.status.name,
+                approvedUntil = approvedUntilStr,
+                autoExtend = user.autoExtend
+            )
+        }
     }
 }

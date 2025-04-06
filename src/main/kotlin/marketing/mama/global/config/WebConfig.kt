@@ -23,10 +23,12 @@ class WebConfig(
                 "http://lohosttest.s3-website.ap-northeast-2.amazonaws.com",
                 "http://maglo4.s3-website.ap-northeast-2.amazonaws.com",
                 "http://maglo6.s3-website.ap-northeast-2.amazonaws.com",
-                "http://43.203.93.162:8080")
+                "http://43.203.93.162:8080",
+                )
+
             .allowedMethods("*") // 모든 HTTP 메서드 허용
             .allowedHeaders("*") // 모든 헤더 허용
             .allowCredentials(true) // 자격 증명 허용 (예: 쿠키, 인증)
-            .exposedHeaders("Authorization","Date")
+            .exposedHeaders("Authorization","Date", "X-New-Access-Token")
     }
 }
