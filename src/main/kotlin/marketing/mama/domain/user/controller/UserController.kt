@@ -4,6 +4,7 @@ import io.swagger.v3.oas.annotations.Operation
 import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
+import marketing.mama.domain.activitylog.service.SearchLogService
 import marketing.mama.domain.user.dto.request.LoginRequest
 import marketing.mama.domain.user.dto.request.SignUpRequest
 import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
@@ -18,6 +19,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
+import java.util.*
 
 
 @RestController
@@ -25,6 +27,7 @@ import org.springframework.web.bind.annotation.*
 class UserController(
     private val userService: UserServiceImpl,
     private val userRepository: UserRepository,
+    private val searchLogService: SearchLogService
 ) {
 
 
@@ -46,12 +49,22 @@ class UserController(
     @Operation(summary = "로그인")
     @PostMapping("/login")
     fun login(
-        @Valid
-        @RequestBody loginRequest: LoginRequest, response: HttpServletResponse
+        @Valid @RequestBody loginRequest: LoginRequest,
+        request: HttpServletRequest,
+        response: HttpServletResponse
     ): ResponseEntity<LoginResponse> {
-        return ResponseEntity
-            .status(HttpStatus.OK)
-            .body(userService.login(loginRequest,response))
+        val loginResponse = userService.login(loginRequest, response)
+
+        val user = userRepository.findByEmail(loginRequest.email)
+            ?: throw IllegalArgumentException("사용자를 찾을 수 없습니다.")
+
+        searchLogService.logLogin(
+            user = user,
+            uuid = UUID.randomUUID().toString(),
+            ip = request.remoteAddr
+        )
+
+        return ResponseEntity.status(HttpStatus.OK).body(loginResponse)
     }
 
     @Operation(summary = "프로필 조회")

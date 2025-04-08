@@ -1,17 +1,20 @@
 package marketing.mama.domain.search.controller
 
+import marketing.mama.domain.search.dto.SearchUsageInfoResponse
 import marketing.mama.domain.search.service.SearchUsageService
+import marketing.mama.domain.user.repository.UserRepository
+import marketing.mama.infra.security.UserPrincipal
 import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.RequestMapping
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.RestController
+import org.springframework.security.access.prepost.PreAuthorize
+import org.springframework.security.core.context.SecurityContextHolder
+import org.springframework.web.bind.annotation.*
 
 @RestController
 @RequestMapping("/api/search")
-class SearchController(
-    private val searchUsageService: SearchUsageService
+class SearchUsageController(
+    private val searchUsageService: SearchUsageService,
+    private val userRepository: UserRepository
 ) {
 
     @GetMapping("/single")
@@ -53,4 +56,29 @@ class SearchController(
     private fun performRankingSearch(keyword: String): Any {
         return "랭킹 순위 검색 결과: $keyword"
     }
+
+
+    @GetMapping("/usage-info/{userId}")
+    @PreAuthorize("hasAnyRole('관리자', '개발자')") // 관리자나 개발자만 조회 가능
+    fun getUserSearchUsageInfo(@PathVariable userId: Long): ResponseEntity<SearchUsageInfoResponse> {
+        return ResponseEntity.ok(searchUsageService.getUserSearchUsageInfo(userId))
+    }
+
+    @PostMapping("/{userId}/usage/reset")
+    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    fun resetSearchUsage(
+        @PathVariable userId: Long,
+        @RequestBody payload: Map<String, String>
+    ): ResponseEntity<Void> {
+        val type = payload["type"]
+        if (type.isNullOrBlank()) {
+            return ResponseEntity.badRequest().build()
+        }
+
+        searchUsageService.resetTodayUsage(userId, type)
+        return ResponseEntity.ok().build()
+    }
+
+
+
 }

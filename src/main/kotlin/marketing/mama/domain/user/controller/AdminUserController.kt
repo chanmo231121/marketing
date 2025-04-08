@@ -1,18 +1,27 @@
 package marketing.mama.domain.user.controller
 
+import marketing.mama.domain.search.dto.UserWithUsageResponse
+import marketing.mama.domain.search.service.SearchUsageService
 import marketing.mama.domain.user.dto.request.ExtendUserRequest
 import marketing.mama.domain.user.dto.request.RejectUserRequest
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
+import marketing.mama.domain.user.repository.UserRepository
 import marketing.mama.domain.user.service.AdminUserService
+import org.springframework.data.repository.findByIdOrNull
+import org.springframework.http.HttpStatus
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.web.bind.annotation.*
+import org.springframework.web.server.ResponseStatusException
 
 @RestController
 @RequestMapping("/api/v1/admin/users")
 class AdminUserController(
-    private val adminUserService: AdminUserService
+    private val adminUserService: AdminUserService,
+    private val userRepository: UserRepository, // ✅ 추가
+    private val searchUsageService: SearchUsageService // ✅ 추가
+
 ) {
 
     // ✅ [GET] 승인 대기 중인 프로 유저 목록 조회
@@ -90,5 +99,23 @@ class AdminUserController(
         adminUserService.extendApproval(userId, request)
         return ResponseEntity.ok("승인 기간이 연장되었습니다.")
     }
+
+
+    @GetMapping("/{userId}/detail")
+    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    fun getUserDetail(@PathVariable userId: Long): ResponseEntity<UserWithUsageResponse> {
+        val user = userRepository.findByIdOrNull(userId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")
+
+        val usage = searchUsageService.getUsageInfo(user)
+
+        return ResponseEntity.ok(
+            UserWithUsageResponse(
+                user = UserResponse.from(user),
+                usage = usage
+            )
+        )
+    }
+
 
 }

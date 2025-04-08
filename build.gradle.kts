@@ -60,6 +60,7 @@ dependencies {
     implementation("io.github.bonigarcia:webdrivermanager:5.6.3")
     implementation("com.aventrix.jnanoid:jnanoid:2.0.0")
 
+    implementation("org.apache.poi:poi-ooxml:5.2.5")
     // ✅ 테스트 전용 h2만 명시적으로 추가
     testImplementation("com.h2database:h2")
 
