@@ -180,6 +180,7 @@ class UserServiceImpl(
     override fun signUp(request: SignUpRequest): UserResponse {
 
         if (userRepository.existsByEmail(request.email)) {
+
             throw IllegalStateException("이메일이 이미 사용중입니다.")
         }
         if (request.password != request.confirmpassword) {
@@ -188,6 +189,7 @@ class UserServiceImpl(
         if (userRepository.existsByname(request.name)) {
             throw IllegalStateException("이름이 이미 사용중입니다.")
         }
+
 
         // 비밀번호 해싱
         val hashedPassword = passwordEncoder.encode(request.password)

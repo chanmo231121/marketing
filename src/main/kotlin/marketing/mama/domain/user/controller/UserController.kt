@@ -33,14 +33,10 @@ class UserController(
 
 
     @Operation(summary = "회원가입")
-    @PostMapping("/signup", consumes = [MediaType.APPLICATION_JSON_VALUE])
-    fun signUp(
-        @Valid
-        @RequestBody signUpRequest: SignUpRequest
-    ): ResponseEntity<UserResponse> {
-        return ResponseEntity
-            .status(HttpStatus.OK)
-            .body(userService.signUp(signUpRequest))
+    @PostMapping("/signup")
+    fun signUp(@Valid @RequestBody request: SignUpRequest): ResponseEntity<UserResponse> {
+        val user = userService.signUp(request)
+        return ResponseEntity.ok(user)
     }
 
 
