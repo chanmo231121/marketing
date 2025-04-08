@@ -24,6 +24,8 @@ interface UserRepository:JpaRepository<User, Long> {
     fun findByStatusAndLastApprovedAtBefore(status: Status, dateTime: LocalDateTime): List<User>
     fun findAllByRoleAndStatusIn(role: Role, statuses: List<Status>): List<User>
     fun findByStatusAndRole(status: Status, role: Role): List<User>
+    fun findAllByReceiveLogEmailTrue(): List<User>
+
 
 
 }

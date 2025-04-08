@@ -249,6 +249,13 @@ class UserServiceImpl(
         return UserResponse.from(user)
     }
 
+    @Transactional
+    override fun updateReceiveLogEmail(userId: Long, receive: Boolean) {
+        val user = userRepository.findById(userId)
+            .orElseThrow { IllegalArgumentException("존재하지 않는 유저입니다.") }
+        user.receiveLogEmail = receive
+    }
+
 /*
 
 

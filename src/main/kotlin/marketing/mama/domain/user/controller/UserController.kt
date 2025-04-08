@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse
 import jakarta.validation.Valid
 import marketing.mama.domain.activitylog.service.SearchLogService
 import marketing.mama.domain.user.dto.request.LoginRequest
+import marketing.mama.domain.user.dto.request.ReceiveLogEmailRequest
 import marketing.mama.domain.user.dto.request.SignUpRequest
 import marketing.mama.domain.user.dto.request.UpdateUserProfileRequest
 import marketing.mama.domain.user.dto.response.LoginResponse
@@ -60,7 +61,7 @@ class UserController(
 
         searchLogService.logLogin(
             user = user,
-            uuid = UUID.randomUUID().toString(),
+            uuid = loginRequest.deviceId,
             ip = request.remoteAddr
         )
 
@@ -97,4 +98,18 @@ class UserController(
         return ResponseEntity.ok(updatedUser)
     }
 
+    @PutMapping("/{id}/email-log-setting")
+    fun updateReceiveLogEmail(
+        @PathVariable id: Long,
+        @RequestBody request: ReceiveLogEmailRequest
+    ): ResponseEntity<String> {
+        userService.updateReceiveLogEmail(id, request.receiveLogEmail)
+        val message = if (request.receiveLogEmail) {
+            "이제 이 관리자는 메일을 받습니다."
+        } else {
+            "이제 이 관리자는 메일을 받지 않습니다."
+        }
+        return ResponseEntity.ok(message)
+    }
 }
+

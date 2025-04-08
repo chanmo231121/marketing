@@ -61,7 +61,10 @@ class User(
 
 
     @Column(name = "approved_until")
-var approvedUntil: LocalDateTime? = null
+    var approvedUntil: LocalDateTime? = null,
+
+    @Column(nullable = false)
+    var receiveLogEmail: Boolean = false
 
     ) : BaseEntity() {
 

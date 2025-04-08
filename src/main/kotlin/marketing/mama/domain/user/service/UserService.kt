@@ -17,6 +17,7 @@ interface UserService {
         fun updateUserProfile(request: UpdateUserProfileRequest): UserResponse
         fun getUserProfile(userId: Long):UserResponse
         fun login(request: LoginRequest, response: HttpServletResponse): LoginResponse
+        fun updateReceiveLogEmail(userId: Long, receive: Boolean)
 /*
         fun updatePassword(request: UpdateUserPasswordRequest)
 

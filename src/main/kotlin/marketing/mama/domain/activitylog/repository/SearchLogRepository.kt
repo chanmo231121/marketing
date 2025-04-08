@@ -15,5 +15,7 @@ interface SearchLogRepository : JpaRepository<SearchLog, Long> {
         start: LocalDateTime,
         end: LocalDateTime
     ): List<SearchLog>
+    fun findAllBySearchedAtBetween(start: LocalDateTime, end: LocalDateTime): List<SearchLog>
+    fun deleteAllBySearchedAtBetween(start: LocalDateTime, end: LocalDateTime)
 
 }
