@@ -33,13 +33,10 @@ class UserController(
 
 
     @Operation(summary = "회원가입")
-    @PostMapping("/signup",
-        consumes = [MediaType.MULTIPART_FORM_DATA_VALUE],
-        produces = [MediaType.APPLICATION_JSON_VALUE]
-    )
+    @PostMapping("/signup", consumes = [MediaType.APPLICATION_JSON_VALUE])
     fun signUp(
         @Valid
-        @ModelAttribute signUpRequest: SignUpRequest
+        @RequestBody signUpRequest: SignUpRequest
     ): ResponseEntity<UserResponse> {
         return ResponseEntity
             .status(HttpStatus.OK)
