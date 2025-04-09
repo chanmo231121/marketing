@@ -79,6 +79,7 @@ class SearchLogController(
         )
     }
 
+
     @GetMapping("/user/{userId}/logs")
     @PreAuthorize("hasAnyRole('개발자', '관리자')")
     fun getLogsByUser(
