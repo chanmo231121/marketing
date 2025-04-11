@@ -14,7 +14,7 @@ data class UserResponse(
     var createdAt: String?, // ✅ 날짜만 표시
     val rejectReason: String? = null,
     val ipAddress: String?,
-    val deviceId: String,
+    val deviceId: String?,
     val status: String,
     val approvedUntil: String?, // ← approvedUntilStr → approvedUntil 로 이름 바꿔도 무방
     val autoExtend: Boolean

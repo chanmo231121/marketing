@@ -15,7 +15,7 @@ data class SearchLog(
     val user: User,
 
     @Column(nullable = false)
-    val uuid: String,
+    val uuid: String?,
 
     @Column(nullable = true)
     val ipAddress: String? = null,

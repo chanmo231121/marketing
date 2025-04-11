@@ -59,7 +59,7 @@ class UserServiceImpl(
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
 
-        if (user.deviceId != request.deviceId) {
+        if (user.role != Role.관리자 && user.deviceId != request.deviceId) {
             throw CustomException("등록되지 않은 기기입니다. 회사에서만 로그인할 수 있습니다.")
         }
 
@@ -176,7 +176,6 @@ class UserServiceImpl(
     override fun signUp(request: SignUpRequest): UserResponse {
 
         if (userRepository.existsByEmail(request.email)) {
-
             throw IllegalStateException("이메일이 이미 사용중입니다.")
         }
         if (request.password != request.confirmpassword) {
@@ -186,18 +185,13 @@ class UserServiceImpl(
             throw IllegalStateException("이름이 이미 사용중입니다.")
         }
 
-
-        // 비밀번호 해싱
         val hashedPassword = passwordEncoder.encode(request.password)
-
-        // ✅ 리더일 경우 PENDING_APPROVAL 상태로 설정
         val status = if (request.role == Role.프로 || request.role == Role.관리자) Status.PENDING_APPROVAL else Status.NORMAL
-
-        // ✅ 전화번호에서 하이픈 제거
         val cleanedTlno = request.tlno.replace(Regex("[^0-9]"), "")
-        val generatedDeviceId = NanoIdUtils.randomNanoId()
 
-        // 사용자 생성
+        // ✅ 관리자일 경우 deviceId 없이 가입
+        val generatedDeviceId = if (request.role == Role.관리자) null else NanoIdUtils.randomNanoId()
+
         val user = User(
             role = request.role,
             name = request.name,
@@ -207,13 +201,14 @@ class UserServiceImpl(
             tlno = cleanedTlno,
             status = status,
             ipAddress = request.ipAddress,
-            deviceId = generatedDeviceId
+            deviceId = generatedDeviceId // ✅ 관리자면 null
         )
 
         val savedUser = userRepository.save(user)
-
         return UserResponse.from(savedUser)
     }
+
+
 
     override fun getUserProfile(userId: Long): UserResponse {
         // 여기서는 이미 컨트롤러에서 인증된 사용자의 ID를 넘겨받았으므로 추가 인증이 필요 없습니다.

@@ -54,7 +54,7 @@ class User(
     var lastApprovedAt: LocalDateTime? = null,
 
     @Column(name = "device_id", nullable = false, unique = true)
-    var deviceId: String = "",
+    var deviceId: String? = null,
 
     @Column(nullable = false)
     var autoExtend: Boolean = false,

@@ -17,7 +17,7 @@ class SearchLogService(
     fun logSearch(
         user: User,
         userName: String,
-        uuid: String,
+        uuid: String?,
         ip: String?,
         keyword: String,
         type: ActionType
