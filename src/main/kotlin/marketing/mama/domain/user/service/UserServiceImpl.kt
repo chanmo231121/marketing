@@ -23,6 +23,7 @@ import marketing.mama.global.exception.WithdrawalCancellationException
 import marketing.mama.infra.security.UserPrincipal
 import marketing.mama.infra.security.jwt.JwtPlugin
 import org.springframework.data.repository.findByIdOrNull
+import org.springframework.http.ResponseCookie
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.security.crypto.password.PasswordEncoder
 import org.springframework.stereotype.Service
@@ -68,32 +69,32 @@ class UserServiceImpl(
             else -> {} // 정상 통과
         }
 
-        // 엑세스 토큰 생성
-        val accessToken = user.role.let {
-            jwtPlugin.generateAccessToken(
-                subject = user.id.toString(),
-                email = user.email,
-                role = it.name
-            )
-        }
+        val accessToken = jwtPlugin.generateAccessToken(
+            subject = user.id.toString(),
+            email = user.email,
+            role = user.role.name
+        )
         jwtPlugin.removeTokenFromBlacklist(accessToken)
 
-        // 리프레시 토큰 생성 및 DB에 저장
-        val refreshToken = user.role.let {
-            jwtPlugin.generateRefreshToken(
-                subject = user.id.toString(),
-                email = user.email,
-                role = it.name
-            )
-        }
-        refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken.toString()))
+        val refreshToken = jwtPlugin.generateRefreshToken(
+            subject = user.id.toString(),
+            email = user.email,
+            role = user.role.name
+        )
+        refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken))
 
-        // 쿠키에 리프레시 토큰 추가
-        val refreshTokenCookie = Cookie("refresh_token", refreshToken)
-        refreshTokenCookie.path = "/"
-        response.addCookie(refreshTokenCookie)
+        // ✅ 보안 쿠키로 refresh token 저장
+        val cookie = ResponseCookie.from("refresh_token", refreshToken)
+            .httpOnly(true)
+            .secure(false) // 배포 시 HTTPS 환경이면 true
+            .sameSite("None")
+            .path("/")
+            .maxAge(7 * 24 * 60 * 60)
+            .build()
 
-        // 헤더에 엑세스 토큰 추가
+        response.setHeader("Set-Cookie", cookie.toString())
+
+        // ✅ access token은 헤더로 전달
         response.setHeader("Authorization", "Bearer $accessToken")
 
         return LoginResponse(

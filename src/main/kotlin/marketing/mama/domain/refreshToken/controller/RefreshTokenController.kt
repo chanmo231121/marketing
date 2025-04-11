@@ -17,15 +17,18 @@ class RefreshTokenController(
 
     @PostMapping("/refresh")
     fun refreshAccessToken(
-        @RequestHeader("Authorization") refreshToken: String,
+        @CookieValue("refresh_token") refreshToken: String?, // ✅ 쿠키에서 읽기
         response: HttpServletResponse
     ): ResponseEntity<String> {
-        val tokenOnly = refreshToken.removePrefix("Bearer ").trim()
-        val newToken = refreshTokenService.refreshAccessToken(tokenOnly, response)
+        if (refreshToken.isNullOrBlank()) {
+            return ResponseEntity.badRequest().body("리프레시 토큰 없음")
+        }
+
+        val newToken = refreshTokenService.refreshAccessToken(refreshToken, response)
+
         return ResponseEntity.ok()
             .header("X-New-Access-Token", newToken)
             .body("새로운 토큰 발급 완료")
     }
-
 
 }
