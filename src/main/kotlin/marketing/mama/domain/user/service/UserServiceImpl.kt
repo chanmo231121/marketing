@@ -59,7 +59,8 @@ class UserServiceImpl(
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
 
-        if (user.deviceId != request.deviceId) {
+        // ✅ 관리자 제외하고만 deviceId 체크
+        if (user.role != Role.관리자 && user.deviceId != request.deviceId) {
             throw CustomException("등록되지 않은 기기입니다. 회사에서만 로그인할 수 있습니다.")
         }
 
@@ -83,18 +84,16 @@ class UserServiceImpl(
         )
         refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken))
 
-        // ✅ 보안 쿠키로 refresh token 저장 (SameSite=None + secure=false)
+        // ✅ 보안 쿠키로 refresh token 저장
         val cookie = ResponseCookie.from("refresh_token", refreshToken)
             .httpOnly(true)
-            .secure(false) // HTTPS 배포 시 true로 변경
-            .sameSite("None") // ✅ 핵심: cross-origin 에서 쿠키 사용 가능하게!
+            .secure(false) // HTTPS 환경에서는 true
+            .sameSite("None")
             .path("/")
             .maxAge(7 * 24 * 60 * 60)
             .build()
 
         response.setHeader("Set-Cookie", cookie.toString())
-
-        // ✅ access token은 헤더로 전달
         response.setHeader("Authorization", "Bearer $accessToken")
 
         return LoginResponse(
