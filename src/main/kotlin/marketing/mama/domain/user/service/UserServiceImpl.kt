@@ -59,7 +59,7 @@ class UserServiceImpl(
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
 
-        if (user.role != Role.관리자 && user.deviceId != request.deviceId) {
+        if (user.deviceId != request.deviceId) {
             throw CustomException("등록되지 않은 기기입니다. 회사에서만 로그인할 수 있습니다.")
         }
 
@@ -69,7 +69,6 @@ class UserServiceImpl(
             else -> {} // 정상 통과
         }
 
-        // ✅ Access Token 생성
         val accessToken = jwtPlugin.generateAccessToken(
             subject = user.id.toString(),
             email = user.email,
@@ -77,7 +76,6 @@ class UserServiceImpl(
         )
         jwtPlugin.removeTokenFromBlacklist(accessToken)
 
-        // ✅ Refresh Token 생성 및 DB 저장
         val refreshToken = jwtPlugin.generateRefreshToken(
             subject = user.id.toString(),
             email = user.email,
@@ -85,11 +83,18 @@ class UserServiceImpl(
         )
         refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken))
 
-        // ✅ 수동으로 Set-Cookie 헤더 설정 (SameSite=Lax + secure=false)
-        val cookie = "refresh_token=$refreshToken; Path=/; Max-Age=${7 * 24 * 60 * 60}; HttpOnly; SameSite=Lax"
-        response.addHeader("Set-Cookie", cookie)
+        // ✅ 보안 쿠키로 refresh token 저장 (SameSite=None + secure=false)
+        val cookie = ResponseCookie.from("refresh_token", refreshToken)
+            .httpOnly(true)
+            .secure(false) // HTTPS 배포 시 true로 변경
+            .sameSite("None") // ✅ 핵심: cross-origin 에서 쿠키 사용 가능하게!
+            .path("/")
+            .maxAge(7 * 24 * 60 * 60)
+            .build()
 
-        // ✅ Access Token은 헤더로
+        response.setHeader("Set-Cookie", cookie.toString())
+
+        // ✅ access token은 헤더로 전달
         response.setHeader("Authorization", "Bearer $accessToken")
 
         return LoginResponse(
