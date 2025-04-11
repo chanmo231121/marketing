@@ -88,7 +88,7 @@ class UserServiceImpl(
         val cookie = ResponseCookie.from("refresh_token", refreshToken)
             .httpOnly(true)
             .secure(false) // HTTPS 되면 true로
-            .sameSite("Lax") // HTTP 환경에서 가장 안정적
+            .sameSite("None") // HTTP 환경에서 가장 안정적
             .path("/")
             .maxAge(7 * 24 * 60 * 60)
             .build()
