@@ -69,6 +69,7 @@ class UserServiceImpl(
             else -> {} // 정상 통과
         }
 
+        // ✅ Access Token 생성
         val accessToken = jwtPlugin.generateAccessToken(
             subject = user.id.toString(),
             email = user.email,
@@ -76,6 +77,7 @@ class UserServiceImpl(
         )
         jwtPlugin.removeTokenFromBlacklist(accessToken)
 
+        // ✅ Refresh Token 생성 및 DB 저장
         val refreshToken = jwtPlugin.generateRefreshToken(
             subject = user.id.toString(),
             email = user.email,
@@ -83,18 +85,11 @@ class UserServiceImpl(
         )
         refreshTokenRepository.save(RefreshToken(user = user, token = refreshToken))
 
-        // ✅ 보안 쿠키로 refresh token 저장
-        val cookie = ResponseCookie.from("refresh_token", refreshToken)
-            .httpOnly(true)
-            .secure(false) // 배포 시 HTTPS 환경이면 true
-            .sameSite("None")
-            .path("/")
-            .maxAge(7 * 24 * 60 * 60)
-            .build()
+        // ✅ 수동으로 Set-Cookie 헤더 설정 (SameSite=Lax + secure=false)
+        val cookie = "refresh_token=$refreshToken; Path=/; Max-Age=${7 * 24 * 60 * 60}; HttpOnly; SameSite=Lax"
+        response.addHeader("Set-Cookie", cookie)
 
-        response.setHeader("Set-Cookie", cookie.toString())
-
-        // ✅ access token은 헤더로 전달
+        // ✅ Access Token은 헤더로
         response.setHeader("Authorization", "Bearer $accessToken")
 
         return LoginResponse(
