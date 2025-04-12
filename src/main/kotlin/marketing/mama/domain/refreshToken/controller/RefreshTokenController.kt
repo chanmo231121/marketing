@@ -17,7 +17,7 @@ class RefreshTokenController(
 
     @PostMapping("/refresh")
     fun refreshAccessToken(
-        @CookieValue("refresh_token") refreshToken: String?, // ✅ 쿠키에서 읽기
+        @CookieValue("refresh_token") refreshToken: String?,
         response: HttpServletResponse
     ): ResponseEntity<String> {
         if (refreshToken.isNullOrBlank()) {
@@ -25,10 +25,10 @@ class RefreshTokenController(
         }
 
         val newToken = refreshTokenService.refreshAccessToken(refreshToken, response)
-
         return ResponseEntity.ok()
             .header("X-New-Access-Token", newToken)
             .body("새로운 토큰 발급 완료")
     }
+
 
 }
