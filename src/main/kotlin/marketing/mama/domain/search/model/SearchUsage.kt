@@ -3,6 +3,8 @@ package marketing.mama.domain.search.model
 import jakarta.persistence.*
 import marketing.mama.domain.user.model.User
 import marketing.mama.global.entity.BaseEntity
+import org.hibernate.annotations.OnDelete
+import org.hibernate.annotations.OnDeleteAction
 import java.time.LocalDate
 
 @Entity
@@ -13,6 +15,7 @@ data class SearchUsage(
     // User 엔티티와 연관 (Lazy 로딩)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     val user: User,
 
     @Column(name = "usage_date", nullable = false)

@@ -21,7 +21,7 @@ class SearchUsageController(
     fun singleSearch(@RequestParam keyword: String): ResponseEntity<Any> {
         return try {
             // 🔒 단일 검색 제한 + 사용량 증가
-            searchUsageService.incrementSingleSearchWithLimit(200)
+            searchUsageService.incrementSingleSearchWithLimit()
 
             // ✅ 검색 로직 실행
             val result = performSingleSearch(keyword)
@@ -37,7 +37,7 @@ class SearchUsageController(
     fun rankingSearch(@RequestParam keyword: String): ResponseEntity<Any> {
         return try {
             // 🔒 랭킹 검색 제한 + 사용량 증가
-            searchUsageService.incrementRankingSearchWithLimit(50)
+            searchUsageService.incrementRankingSearchWithLimit()
 
             // ✅ 검색 로직 실행
             val result = performRankingSearch(keyword)

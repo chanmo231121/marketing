@@ -98,7 +98,7 @@ class KeywordController(
     @PreAuthorize("isAuthenticated()")
     fun incrementSearchUsage(): ResponseEntity<Any> {
         return try {
-            searchUsageService.incrementSingleSearchWithLimit(200)
+            searchUsageService.incrementSingleSearchWithLimit()
             ResponseEntity.ok().body(mapOf("success" to true))
         } catch (e: IllegalStateException) {
             ResponseEntity.status(429).body(mapOf("error" to e.message))

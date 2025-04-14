@@ -7,6 +7,7 @@ import marketing.mama.domain.user.dto.request.RejectUserRequest
 import marketing.mama.domain.user.dto.request.UpdateFeatureUsageRequest
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
+import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.repository.UserRepository
 import marketing.mama.domain.user.service.AdminUserService
 import org.springframework.data.repository.findByIdOrNull
@@ -140,7 +141,45 @@ class AdminUserController(
         return ResponseEntity.ok("기능 사용 여부가 업데이트되었습니다.")
     }
 
+    @PutMapping("/expire/{userId}") // ← URL 충돌 방지
+    @PreAuthorize("hasRole('ADMIN') or hasRole('DEV')")
+    fun expireUserImmediately(@PathVariable userId: Long): ResponseEntity<String> {
+        val user = userRepository.findByIdOrNull(userId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")
 
+        user.status = Status.PENDING_REAPPROVAL
+        user.approvedUntil = null
+        user.autoExtend = false
 
+        userRepository.save(user)
+
+        return ResponseEntity.ok("해당 유저의 상태가 만료되었습니다.")
+    }
+
+    @PutMapping("/{userId}/usage-limit")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
+    fun updateUsageLimit(
+        @PathVariable userId: Long,
+        @RequestBody req: Map<String, Any>
+    ): ResponseEntity<String> {
+        val user = userRepository.findByIdOrNull(userId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다.")
+
+        val type = req["type"] as? String
+        val limit = (req["limit"] as? Number)?.toInt()
+
+        if (type.isNullOrBlank() || limit == null || limit <= 0) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "type 또는 limit 값이 잘못되었습니다.")
+        }
+
+        when (type) {
+            "single" -> user.singleSearchLimit = limit
+            "ranking" -> user.rankingSearchLimit = limit
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 타입입니다.")
+        }
+
+        userRepository.save(user)
+        return ResponseEntity.ok("사용 제한이 $limit 회로 설정되었습니다.")
+    }
 
 }

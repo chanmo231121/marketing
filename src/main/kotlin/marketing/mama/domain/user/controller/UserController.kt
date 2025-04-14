@@ -123,6 +123,12 @@ class UserController(
         return ResponseEntity.ok(mapOf("message" to message))
     }
 
+    @GetMapping("/me")
+    fun getCurrentUser(@AuthenticationPrincipal principal: UserPrincipal): ResponseEntity<UserResponse> {
+        val email = principal.email  // username 말고 email로 접근
+        val user = userService.getUserByEmail(email)
+        return ResponseEntity.ok(UserResponse.from(user))
+    }
 
 }
 

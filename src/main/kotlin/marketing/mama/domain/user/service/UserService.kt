@@ -21,6 +21,7 @@ interface UserService {
         fun updateReceiveLogEmail(userId: Long, receive: Boolean)
         fun requestDeviceApproval(userId: Long, deviceId: String): String
         fun validateDevice(user: User, currentDeviceId: String?)
+        fun getUserByEmail(email: String): User
         /*
                 fun updatePassword(request: UpdateUserPasswordRequest)
 

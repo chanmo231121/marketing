@@ -21,7 +21,7 @@ class KeywordRankingService(
 
     fun getNaverAdData(keywords: List<String>): List<Map<String, Any>> {
         // 🔒 사용량 체크 및 증가
-        searchUsageService.incrementRankingSearchWithLimit(50)
+        searchUsageService.incrementRankingSearchWithLimit()
 
         val results = mutableListOf<Map<String, Any>>()
         val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())

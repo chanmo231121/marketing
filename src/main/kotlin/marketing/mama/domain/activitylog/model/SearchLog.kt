@@ -4,6 +4,8 @@ import jakarta.persistence.*
 import marketing.mama.domain.activitylog.dto.SearchLogResponse
 import marketing.mama.domain.user.model.User
 import marketing.mama.global.entity.BaseEntity
+import org.hibernate.annotations.OnDelete
+import org.hibernate.annotations.OnDeleteAction
 import java.time.LocalDateTime
 
 @Entity
@@ -11,7 +13,8 @@ data class SearchLog(
 
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id")
+    @JoinColumn(name = "user_id", nullable = false)
+    @OnDelete(action = OnDeleteAction.CASCADE)
     val user: User,
 
     @Column(nullable = true)

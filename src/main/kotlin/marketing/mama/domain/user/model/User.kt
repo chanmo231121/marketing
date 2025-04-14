@@ -78,6 +78,11 @@ class User(
     @Column(nullable = false)
     var canUseRelatedSearch: Boolean = true,
 
+    @Column(name = "single_search_limit")
+    var singleSearchLimit: Int? = 200,
+
+    @Column(name = "ranking_search_limit")
+    var rankingSearchLimit: Int? = 50,
 
     ) : BaseEntity() {
 

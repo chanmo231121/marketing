@@ -18,22 +18,21 @@ class SearchUsageService(
     private val searchUsageRepository: SearchUsageRepository,
     private val userRepository: UserRepository
 ) {
+
     private fun getCurrentUser(): User {
         val principal = SecurityContextHolder.getContext().authentication?.principal
         val userPrincipal = principal as? UserPrincipal
             ?: throw RuntimeException("인증된 사용자 정보를 찾을 수 없습니다.")
-
         return userRepository.findById(userPrincipal.id)
             .orElseThrow { RuntimeException("사용자를 찾을 수 없습니다: ${userPrincipal.id}") }
     }
 
     @Transactional
-    fun incrementSingleSearchWithLimit(limit: Int = 200) {
+    fun incrementSingleSearchWithLimit() {
         val user = getCurrentUser()
-
-        // ✅ 관리자, 개발자는 제한 없이 통과
         if (user.role != Role.PRO) return
 
+        val limit = user.singleSearchLimit ?: 200
         val today = LocalDate.now()
 
         val usage = searchUsageRepository.findByUserIdAndUsageDate(user.id!!, today)
@@ -48,12 +47,11 @@ class SearchUsageService(
     }
 
     @Transactional
-    fun incrementRankingSearchWithLimit(limit: Int = 50) {
+    fun incrementRankingSearchWithLimit() {
         val user = getCurrentUser()
-
-        // ✅ 관리자, 개발자는 제한 없이 통과
         if (user.role != Role.PRO) return
 
+        val limit = user.rankingSearchLimit ?: 50
         val today = LocalDate.now()
 
         val usage = searchUsageRepository.findByUserIdAndUsageDate(user.id!!, today)
@@ -76,11 +74,13 @@ class SearchUsageService(
             ?: SearchUsage(user = user, usageDate = today, singleSearchCount = 0, rankingSearchCount = 0)
 
         val isPro = user.role == Role.PRO
+        val singleLimit = if (isPro) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
+        val rankingLimit = if (isPro) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
-            singleSearchLimit = if (isPro) 200 else Int.MAX_VALUE,
+            singleSearchLimit = singleLimit,
             singleSearchUsed = usage.singleSearchCount,
-            rankingSearchLimit = if (isPro) 50 else Int.MAX_VALUE,
+            rankingSearchLimit = rankingLimit,
             rankingSearchUsed = usage.rankingSearchCount,
             canUseSingleSearch = isPro,
             canUseRankingSearch = isPro
@@ -89,13 +89,13 @@ class SearchUsageService(
 
     fun getUsageInfo(user: User): SearchUsageInfoResponse {
         val today = LocalDate.now()
-
         val usage = searchUsageRepository.findByUserIdAndUsageDate(user.id!!, today)
+
         val singleUsed = usage?.singleSearchCount ?: 0
         val rankingUsed = usage?.rankingSearchCount ?: 0
 
-        val singleLimit = if (user.role == Role.PRO) 200 else Int.MAX_VALUE
-        val rankingLimit = if (user.role == Role.PRO) 50 else Int.MAX_VALUE
+        val singleLimit = if (user.role == Role.PRO) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
+        val rankingLimit = if (user.role == Role.PRO) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,
@@ -106,6 +106,7 @@ class SearchUsageService(
             canUseRankingSearch = rankingUsed < rankingLimit
         )
     }
+
     @Transactional
     fun resetTodayUsage(userId: Long, type: String) {
         val today = LocalDate.now()
@@ -122,5 +123,4 @@ class SearchUsageService(
 
         searchUsageRepository.save(usage)
     }
-
 }
