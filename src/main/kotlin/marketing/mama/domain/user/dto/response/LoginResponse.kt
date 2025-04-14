@@ -6,6 +6,7 @@ import marketing.mama.domain.user.model.Status
 import java.time.LocalDateTime
 
 data class LoginResponse(
+    val id: Long,
     val name: String,
     val role: Role,
     val status :Status,

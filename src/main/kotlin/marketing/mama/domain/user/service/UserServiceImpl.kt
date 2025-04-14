@@ -94,6 +94,8 @@ class UserServiceImpl(
             role = user.role,
             status = user.status,
             approvedUntil = user.approvedUntil,
+            id = user.id!!
+
 
         )
     }
@@ -238,29 +240,30 @@ class UserServiceImpl(
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
 
-        // 👉 다른 계정이 이미 이 deviceId를 쓰고 있으면 막기
+        // 👉 다른 유저가 이미 이 deviceId를 가지고 있는 경우만 막기 (자기 자신이면 OK)
         val exists = userRepository.findByDeviceId(deviceId)
         if (exists != null && exists.id != user.id) {
             throw IllegalStateException("이미 다른 계정에서 승인된 기기입니다. 관리자에게 문의해주세요.")
         }
 
-        // ✅ 이미 승인 요청 중일 경우
-        if (user.status == Status.PENDING_APPROVAL) {
-            return "이미 기기 승인 요청을 보낸 상태입니다."
+        // ✅ 기기ID가 없거나 다르다면 업데이트 + 상태를 대기상태로
+        if (user.deviceId != deviceId) {
+            user.deviceId = deviceId
+            user.status = Status.PENDING_APPROVAL
+            userRepository.save(user)
+            return "기기 승인 요청이 완료되었습니다. 관리자 승인을 기다려주세요."
         }
 
-        // ✅ 이미 승인된 경우
-        if (user.deviceId != null && user.deviceId == deviceId && user.status == Status.NORMAL) {
-            return "이 기기는 이미 승인된 상태입니다."
+        // ✅ 이미 승인 요청한 상태라면 안내 메시지
+        return when (user.status) {
+            Status.PENDING_APPROVAL -> "이미 기기 승인 요청을 보낸 상태입니다."
+            Status.NORMAL -> "이 기기는 이미 승인된 상태입니다."
+            else -> {
+                user.status = Status.PENDING_APPROVAL
+                userRepository.save(user)
+                "기기 승인 요청이 완료되었습니다. 관리자 승인을 기다려주세요."
+            }
         }
-
-        // ✅ 새 요청
-        user.deviceId = deviceId
-        user.status = Status.PENDING_APPROVAL
-        user.approvedUntil = null
-        userRepository.save(user)
-
-        return "기기 승인 요청이 완료되었습니다. 관리자 승인을 기다려주세요."
     }
 
     override fun validateDevice(user: User, currentDeviceId: String?) {
