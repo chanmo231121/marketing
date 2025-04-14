@@ -17,7 +17,11 @@ data class UserResponse(
     val status: String,
     val approvedUntil: String?, // ← approvedUntilStr → approvedUntil 로 이름 바꿔도 무방
     val autoExtend: Boolean,
-    val deviceId: String? = null
+    val deviceId: String? = null,
+    val canUseSingleSearch: Boolean,
+    val canUseRankingSearch: Boolean,
+    val canUseKeywordMix: Boolean,
+    val canUseRelatedSearch: Boolean
 ) {
     companion object {
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -39,7 +43,11 @@ data class UserResponse(
                 status = user.status.name,
                 approvedUntil = approvedUntilStr,
                 autoExtend = user.autoExtend,
-                deviceId = user.deviceId
+                deviceId = user.deviceId,
+                canUseSingleSearch = user.canUseSingleSearch,
+                canUseRankingSearch = user.canUseRankingSearch,
+                canUseKeywordMix = user.canUseKeywordMix,
+                canUseRelatedSearch = user.canUseRelatedSearch
             )
         }
     }

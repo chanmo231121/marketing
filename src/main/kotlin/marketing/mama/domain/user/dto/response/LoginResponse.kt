@@ -11,7 +11,10 @@ data class LoginResponse(
     val role: Role,
     val status :Status,
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
-    val approvedUntil: LocalDateTime?  // 만료일 필드 추가 (필요시 타입을 LocalDateTime 등으로 변경 가능)
-
+    val approvedUntil: LocalDateTime?,  // 만료일 필드 추가 (필요시 타입을 LocalDateTime 등으로 변경 가능)
+    val canUseSingleSearch: Boolean,
+    val canUseRankingSearch: Boolean,
+    val canUseKeywordMix: Boolean,
+    val canUseRelatedSearch: Boolean
 
 )

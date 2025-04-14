@@ -4,6 +4,7 @@ import marketing.mama.domain.search.dto.UserWithUsageResponse
 import marketing.mama.domain.search.service.SearchUsageService
 import marketing.mama.domain.user.dto.request.ExtendUserRequest
 import marketing.mama.domain.user.dto.request.RejectUserRequest
+import marketing.mama.domain.user.dto.request.UpdateFeatureUsageRequest
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.repository.UserRepository
@@ -112,9 +113,31 @@ class AdminUserController(
         return ResponseEntity.ok(
             UserWithUsageResponse(
                 user = UserResponse.from(user),
-                usage = usage
+                usage = usage,
             )
         )
+    }
+
+    @PutMapping("/{userId}/feature-usage")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
+    fun updateFeatureUsage(
+        @PathVariable userId: Long,
+        @RequestBody request: UpdateFeatureUsageRequest
+    ): ResponseEntity<String> {
+        val user = userRepository.findByIdOrNull(userId)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다.")
+
+        when (request.feature) {
+            "single" -> user.canUseSingleSearch = request.enabled
+            "ranking" -> user.canUseRankingSearch = request.enabled
+            "related" -> user.canUseRelatedSearch = request.enabled
+            "mixer" -> user.canUseKeywordMix = request.enabled
+            else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 기능명입니다.")
+        }
+
+        userRepository.save(user)
+
+        return ResponseEntity.ok("기능 사용 여부가 업데이트되었습니다.")
     }
 
 

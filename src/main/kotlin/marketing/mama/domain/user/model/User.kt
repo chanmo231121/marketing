@@ -66,6 +66,17 @@ class User(
     @Column(nullable = false)
     var receiveLogEmail: Boolean = false,
 
+    @Column(nullable = false)
+    var canUseSingleSearch: Boolean = true,
+
+    @Column(nullable = false)
+    var canUseRankingSearch: Boolean = true,
+
+    @Column(nullable = false)
+    var canUseKeywordMix: Boolean = true,
+
+    @Column(nullable = false)
+    var canUseRelatedSearch: Boolean = true,
 
 
     ) : BaseEntity() {

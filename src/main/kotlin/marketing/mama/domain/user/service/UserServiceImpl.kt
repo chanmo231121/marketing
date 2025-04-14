@@ -94,7 +94,11 @@ class UserServiceImpl(
             role = user.role,
             status = user.status,
             approvedUntil = user.approvedUntil,
-            id = user.id!!
+            id = user.id!!,
+            canUseSingleSearch = user.canUseSingleSearch,
+            canUseRankingSearch = user.canUseRankingSearch,
+            canUseKeywordMix = user.canUseKeywordMix,
+            canUseRelatedSearch = user.canUseRelatedSearch
 
 
         )

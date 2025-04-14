@@ -12,6 +12,7 @@ data class UpdateUserProfileRequest(
     val introduction: String,
 
     @field:ValidTlno
-    val tlno: String
+    val tlno: String,
+
 
 )

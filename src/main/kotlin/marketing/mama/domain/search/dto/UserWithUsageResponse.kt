@@ -4,5 +4,6 @@ import marketing.mama.domain.user.dto.response.UserResponse
 
 data class UserWithUsageResponse(
     val user: UserResponse,
-    val usage: SearchUsageInfoResponse
+    val usage: SearchUsageInfoResponse,
+
 )

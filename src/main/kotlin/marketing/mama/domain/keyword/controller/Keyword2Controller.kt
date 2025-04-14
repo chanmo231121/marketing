@@ -56,6 +56,9 @@ class Keyword2Controller(
             if (user.status == Status.WAITING) {
                 return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
             }
+            if (!user.canUseRelatedSearch) {
+                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 연관검색 기능 사용이 제한된 계정입니다. 관리자에게 문의해주세요."))
+            }
         }
 
         searchLogService.logSearch(

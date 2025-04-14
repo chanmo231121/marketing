@@ -66,6 +66,9 @@ class KeywordController(
             if (user.status == Status.WAITING) {
                 return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
             }
+            if (!user.canUseSingleSearch) {
+                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 단일검색 기능 사용이 제한된 계정입니다. 관리자에게 문의해주세요."))
+            }
         }
 
         // 로그 저장 (승인된 사용자인 경우에만 로그를 남김)
