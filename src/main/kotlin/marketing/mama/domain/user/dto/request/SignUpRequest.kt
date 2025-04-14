@@ -34,16 +34,16 @@ data class SignUpRequest(
 
 ){
 
-    fun to(): User {
+    fun to(hashedPassword: String): User {
         return User(
             role = role,
             name = name,
             email = email,
-            password = password,
+            password = hashedPassword, // 여기에 해시된 비밀번호 넘김
             introduction = introduction,
             tlno = tlno.replace(Regex("[^0-9]"), ""),
-            status = Status.NORMAL,
-            ipAddress = ipAddress,
+            status = Status.WAITING,
+            ipAddress = ipAddress
         )
     }
 }

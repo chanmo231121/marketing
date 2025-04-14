@@ -13,12 +13,12 @@ class ApprovalScheduler(
 ) {
 
     // ✅ 매일 자정에 실행
-    @Scheduled(cron = "0 0 0 * * ?") // 매일 자정
+    @Scheduled(cron = "0 * * * * ?") // 매일 자정
     fun expireOldApprovals() {
         val now = LocalDateTime.now()
 
         // 🔹 자동 연장 OFF → 만료된 유저는 재승인 필요
-        val expiredUsers = userRepository.findByStatusAndRole(Status.NORMAL, Role.프로)
+        val expiredUsers = userRepository.findByStatusAndRole(Status.NORMAL, Role.PRO)
             .filter { it.approvedUntil?.isBefore(now) == true && !it.autoExtend }
 
         expiredUsers.forEach {
@@ -28,7 +28,7 @@ class ApprovalScheduler(
         println("✅ [스케줄러] 수동 재승인 대상: ${expiredUsers.size}")
 
         // 🔹 자동 연장 대상 유저 → +7일 연장
-        val autoExtendUsers = userRepository.findByStatusAndRole(Status.NORMAL, Role.프로)
+        val autoExtendUsers = userRepository.findByStatusAndRole(Status.NORMAL, Role.PRO)
             .filter { it.autoExtend && it.approvedUntil?.isBefore(now) == true }
 
         autoExtendUsers.forEach {

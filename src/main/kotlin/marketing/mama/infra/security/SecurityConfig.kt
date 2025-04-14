@@ -28,7 +28,7 @@ class SecurityConfig(
             .httpBasic { it.disable() }
             .formLogin { it.disable() }
             .csrf { it.disable() }
-            .cors { it.disable() }
+            .cors { }
             .headers {
 
                 it.frameOptions { foc -> foc.disable() }
@@ -41,10 +41,11 @@ class SecurityConfig(
 
                     "/api/v1/users/login",
                     "/api/v1/users/signup",
+                    "/api/v1/refresh",
                     "/h2-console/**",
                     "/swagger-ui/**",
                     "/v3/api-docs/**",
-                    "/**"
+                    "/api/admin/logs/custom",
                     ).permitAll()
                     // 위 URI를 제외하곤 모두 인증이 되어야 함.
                     .anyRequest().authenticated()

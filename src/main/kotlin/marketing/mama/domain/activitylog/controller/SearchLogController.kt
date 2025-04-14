@@ -1,12 +1,16 @@
 package marketing.mama.domain.activitylog.controller
 
+import jakarta.servlet.http.HttpServletRequest
 import jakarta.servlet.http.HttpServletResponse
 import marketing.mama.domain.activitylog.dto.FrontLogRequest
 import marketing.mama.domain.activitylog.dto.SearchLogResponse
+import marketing.mama.domain.activitylog.model.ActionType
 import marketing.mama.domain.activitylog.service.SearchLogService
 import marketing.mama.domain.user.repository.UserRepository
+import marketing.mama.domain.user.service.UserService
 import marketing.mama.infra.security.UserPrincipal
 import org.apache.poi.xssf.usermodel.XSSFWorkbook
+import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
@@ -18,6 +22,7 @@ import java.time.LocalDate
 class SearchLogController(
     private val searchLogService: SearchLogService,
     private val userRepository: UserRepository,
+    private val userService: UserService,
 ) {
 
     @GetMapping("/user/{userId}/download")
@@ -40,7 +45,6 @@ class SearchLogController(
         logs.forEachIndexed { index, log ->
             val row = sheet.createRow(index + 1)
             row.createCell(0).setCellValue(log.userName)
-            row.createCell(1).setCellValue(log.uuid)
             row.createCell(2).setCellValue(log.ipAddress ?: "-")
             row.createCell(3).setCellValue(log.actionType)
             row.createCell(4).setCellValue(log.keyword)
@@ -72,7 +76,6 @@ class SearchLogController(
         searchLogService.logSearch(
             user = user,
             userName = user.name,
-            uuid = request.uuid,
             ip = request.ip,
             keyword = request.keyword,
             type = request.actionType
@@ -82,7 +85,7 @@ class SearchLogController(
 
 
     @GetMapping("/user/{userId}/logs")
-    @PreAuthorize("hasAnyRole('개발자', '관리자')")
+    @PreAuthorize("hasAnyRole('DEV', 'ADMIN')")
     fun getLogsByUser(
         @PathVariable userId: Long,
         @RequestParam(required = false) startDate: String?,
@@ -95,4 +98,33 @@ class SearchLogController(
             searchLogService.getLogsByUserId(userId, limit = limit) // 👈 limit 반영
         }
     }
+
+    @PostMapping("/custom")
+    @PreAuthorize("isAuthenticated()")
+    fun logCustomAction(
+        @RequestBody request: CustomLogRequest,
+        @AuthenticationPrincipal userPrincipal: UserPrincipal,
+        requestRaw: HttpServletRequest
+    ): ResponseEntity<Void> {
+        val user = userRepository.findById(userPrincipal.id).orElseThrow()
+        val ip = requestRaw.remoteAddr
+
+        userService.validateDevice(user, request.uuid)
+
+        searchLogService.logSearch(
+            user = user,
+            userName = user.name,
+            ip = ip,
+            keyword = request.keyword,
+            type = ActionType.키워드조합,
+            uuid = request.uuid
+        )
+        return ResponseEntity.ok().build()
+    }
+
+    data class CustomLogRequest(
+        val keyword: String,
+        val uuid: String?
+    )
+
 }

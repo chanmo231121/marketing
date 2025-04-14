@@ -59,13 +59,13 @@ class SearchUsageController(
 
 
     @GetMapping("/usage-info/{userId}")
-    @PreAuthorize("hasAnyRole('관리자', '개발자')") // 관리자나 개발자만 조회 가능
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')") // 관리자나 개발자만 조회 가능
     fun getUserSearchUsageInfo(@PathVariable userId: Long): ResponseEntity<SearchUsageInfoResponse> {
         return ResponseEntity.ok(searchUsageService.getUserSearchUsageInfo(userId))
     }
 
     @PostMapping("/{userId}/usage/reset")
-    @PreAuthorize("hasAnyRole('관리자', '개발자')")
+    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     fun resetSearchUsage(
         @PathVariable userId: Long,
         @RequestBody payload: Map<String, String>

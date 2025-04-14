@@ -23,7 +23,6 @@ class ExcelUtil {
         logs.forEachIndexed { index, log ->
             val row = sheet.createRow(index + 1)
             row.createCell(0).setCellValue(log.userName)
-            row.createCell(1).setCellValue(log.uuid)
             row.createCell(2).setCellValue(log.ipAddress ?: "-")
             row.createCell(3).setCellValue(log.keyword)
             row.createCell(4).setCellValue(log.actionType.name)

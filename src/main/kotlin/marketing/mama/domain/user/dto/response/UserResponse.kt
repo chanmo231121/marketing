@@ -14,10 +14,10 @@ data class UserResponse(
     var createdAt: String?, // ✅ 날짜만 표시
     val rejectReason: String? = null,
     val ipAddress: String?,
-    val deviceId: String?,
     val status: String,
     val approvedUntil: String?, // ← approvedUntilStr → approvedUntil 로 이름 바꿔도 무방
-    val autoExtend: Boolean
+    val autoExtend: Boolean,
+    val deviceId: String? = null
 ) {
     companion object {
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -36,10 +36,10 @@ data class UserResponse(
                 createdAt = user.createdAt.format(dateFormatter),
                 rejectReason = user.rejectReason,
                 ipAddress = user.ipAddress,
-                deviceId = user.deviceId,
                 status = user.status.name,
                 approvedUntil = approvedUntilStr,
-                autoExtend = user.autoExtend
+                autoExtend = user.autoExtend,
+                deviceId = user.deviceId
             )
         }
     }

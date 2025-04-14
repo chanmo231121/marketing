@@ -14,7 +14,6 @@ data class LoginRequest(
     @field: ValidPassword
     val password: String,
 
-    val deviceId: String
 
 //    val verificationCode: String
 )

@@ -53,7 +53,7 @@ class User(
     @Column(name = "last_approved_at")
     var lastApprovedAt: LocalDateTime? = null,
 
-    @Column(name = "device_id", nullable = false, unique = true)
+    @Column(name = "device_id", nullable = true, unique = true)
     var deviceId: String? = null,
 
     @Column(nullable = false)
@@ -64,7 +64,9 @@ class User(
     var approvedUntil: LocalDateTime? = null,
 
     @Column(nullable = false)
-    var receiveLogEmail: Boolean = false
+    var receiveLogEmail: Boolean = false,
+
+
 
     ) : BaseEntity() {
 

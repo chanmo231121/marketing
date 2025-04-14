@@ -59,15 +59,8 @@ class UserServiceImpl(
             throw IllegalArgumentException("이메일 또는 비밀번호를 확인해주세요.")
         }
 
-        // ✅ 관리자 제외하고만 deviceId 체크
-        if (user.role != Role.관리자 && user.deviceId != request.deviceId) {
-            throw CustomException("등록되지 않은 기기입니다. 회사에서만 로그인할 수 있습니다.")
-        }
-
-        when (user.status) {
-            Status.PENDING_APPROVAL -> throw CustomException("가입 승인 대기 중입니다. 관리자 승인을 기다려주세요.")
-            Status.PENDING_REAPPROVAL -> throw CustomException("계정 재승인이 필요합니다. 관리자에게 문의해주세요.")
-            else -> {} // 정상 통과
+        if (user.role == Role.ADMIN && user.status == Status.WAITING) {
+            throw IllegalStateException("관리자는 별도 승인이 필요합니다. 로그인할 수 없습니다.")
         }
 
         val accessToken = jwtPlugin.generateAccessToken(
@@ -99,7 +92,9 @@ class UserServiceImpl(
         return LoginResponse(
             name = user.name,
             role = user.role,
-            stats = user.status
+            status = user.status,
+            approvedUntil = user.approvedUntil,
+
         )
     }
 
@@ -190,23 +185,8 @@ class UserServiceImpl(
         }
 
         val hashedPassword = passwordEncoder.encode(request.password)
-        val status = if (request.role == Role.프로 || request.role == Role.관리자) Status.PENDING_APPROVAL else Status.NORMAL
-        val cleanedTlno = request.tlno.replace(Regex("[^0-9]"), "")
 
-        // ✅ 관리자일 경우 deviceId 없이 가입
-        val generatedDeviceId = if (request.role == Role.관리자) null else NanoIdUtils.randomNanoId()
-
-        val user = User(
-            role = request.role,
-            name = request.name,
-            email = request.email,
-            password = hashedPassword,
-            introduction = request.introduction,
-            tlno = cleanedTlno,
-            status = status,
-            ipAddress = request.ipAddress,
-            deviceId = generatedDeviceId // ✅ 관리자면 null
-        )
+        val user = request.to(hashedPassword)
 
         val savedUser = userRepository.save(user)
         return UserResponse.from(savedUser)
@@ -253,6 +233,51 @@ class UserServiceImpl(
         user.receiveLogEmail = receive
     }
 
+    @Transactional
+    override fun requestDeviceApproval(userId: Long, deviceId: String): String {
+        val user = userRepository.findById(userId)
+            .orElseThrow { IllegalArgumentException("사용자를 찾을 수 없습니다.") }
+
+        // 👉 다른 계정이 이미 이 deviceId를 쓰고 있으면 막기
+        val exists = userRepository.findByDeviceId(deviceId)
+        if (exists != null && exists.id != user.id) {
+            throw IllegalStateException("이미 다른 계정에서 승인된 기기입니다. 관리자에게 문의해주세요.")
+        }
+
+        // ✅ 이미 승인 요청 중일 경우
+        if (user.status == Status.PENDING_APPROVAL) {
+            return "이미 기기 승인 요청을 보낸 상태입니다."
+        }
+
+        // ✅ 이미 승인된 경우
+        if (user.deviceId != null && user.deviceId == deviceId && user.status == Status.NORMAL) {
+            return "이 기기는 이미 승인된 상태입니다."
+        }
+
+        // ✅ 새 요청
+        user.deviceId = deviceId
+        user.status = Status.PENDING_APPROVAL
+        user.approvedUntil = null
+        userRepository.save(user)
+
+        return "기기 승인 요청이 완료되었습니다. 관리자 승인을 기다려주세요."
+    }
+
+    override fun validateDevice(user: User, currentDeviceId: String?) {
+        if (user.role == Role.ADMIN || user.role == Role.DEV) return
+
+        if (user.deviceId == null) {
+            throw IllegalStateException("⛔ 기기 승인 요청이 필요합니다. 오른쪽 상단에서 요청해주세요.")
+        }
+
+        if (user.deviceId != currentDeviceId) {
+            throw IllegalStateException("⚠️ 이 기기는 승인되지 않았습니다. 관리자에게 재승인 요청을 해주세요.")
+        }
+
+        if (user.status != Status.NORMAL) {
+            throw IllegalStateException("🚫 현재 계정 상태로는 기능을 이용할 수 없습니다. 관리자 승인을 기다려주세요.")
+        }
+    }
 /*
 
 

@@ -14,21 +14,21 @@ class AdminApprovalController(
 ) {
 
     // ✅ 대기 중인 관리자 유저 목록 조회
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @GetMapping("/pending")
     fun getPendingAdmins(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminAdminService.getPendingAdmins())
     }
 
     // ✅ 관리자 승인 처리
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @PutMapping("/approve/{userId}")
     fun approveAdmin(@PathVariable userId: Long): ResponseEntity<String> {
         return ResponseEntity.ok(adminAdminService.approveAdmin(userId))
     }
 
     // ✅ 관리자 거절 처리 (선택)
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @PutMapping("/reject/{userId}")
     fun rejectAdmin(
         @PathVariable userId: Long,
@@ -37,19 +37,19 @@ class AdminApprovalController(
         return ResponseEntity.ok(adminAdminService.rejectAdmin(userId, request.reason))
     }
 
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @GetMapping("/rejected")
     fun getRejectedAdmins(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminAdminService.getRejectedAdmins())
     }
 
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @PutMapping("/restore/{userId}")
     fun restoreAdmin(@PathVariable userId: Long): ResponseEntity<String> {
         return ResponseEntity.ok(adminAdminService.restoreAdmin(userId))
     }
 
-    @PreAuthorize("hasRole('개발자')")
+    @PreAuthorize("hasRole('DEV')")
     @GetMapping("/approved")
     fun getApprovedAdminsAndPros(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminAdminService.getApprovedAdminsAndPros())

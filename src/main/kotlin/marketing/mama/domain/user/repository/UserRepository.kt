@@ -25,7 +25,7 @@ interface UserRepository:JpaRepository<User, Long> {
     fun findAllByRoleAndStatusIn(role: Role, statuses: List<Status>): List<User>
     fun findByStatusAndRole(status: Status, role: Role): List<User>
     fun findAllByReceiveLogEmailTrue(): List<User>
-
+    fun findByDeviceId(deviceId: String): User?
 
 
 }

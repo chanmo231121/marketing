@@ -16,18 +16,19 @@ import java.time.format.DateTimeFormatter
 
 @Service
 class AdminUserServiceImpl(
-    private val userRepository: UserRepository
+    private val userRepository: UserRepository,
+
 ) : AdminUserService {
 
-    override fun getPendingPros(): List<UserResponse> {
-        val pendingStatuses = listOf(Status.PENDING_APPROVAL)
-        val pendingPros = userRepository.findAllByRoleAndStatusIn(Role.프로, pendingStatuses)
-        return pendingPros.map { UserResponse.from(it) }
-    }
 
     override fun getReapprovalPendingPros(): List<UserResponse> {
-        val users = userRepository.findAllByRoleAndStatus(Role.프로, Status.PENDING_REAPPROVAL)
+        val users = userRepository.findAllByRoleAndStatus(Role.PRO, Status.PENDING_REAPPROVAL)
         return users.map { UserResponse.from(it) }
+    }
+
+    override fun getPendingPros(): List<UserResponse> {
+        val pendingUsers = userRepository.findAllByStatusAndRole(Status.PENDING_APPROVAL, Role.PRO)
+        return pendingUsers.map { user -> UserResponse.from(user) }
     }
 
     @Transactional
@@ -47,7 +48,7 @@ class AdminUserServiceImpl(
     }
 
     override fun findRejectedUsers(): List<UserResponse> {
-        return userRepository.findAllByRoleAndStatus(Role.프로, Status.REJECTED)
+        return userRepository.findAllByRoleAndStatus(Role.PRO, Status.REJECTED)
             .map { UserResponse.from(it) }
     }
 
@@ -62,7 +63,7 @@ class AdminUserServiceImpl(
         val user = userRepository.findById(userId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다") }
 
-        if (user.role != Role.프로) {
+        if (user.role != Role.PRO) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "프로 유저만 거절할 수 있습니다")
         }
         user.status = Status.REJECTED
@@ -77,7 +78,7 @@ class AdminUserServiceImpl(
         val user = userRepository.findById(userId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다") }
 
-        if (user.role != Role.프로 || user.status != Status.REJECTED) {
+        if (user.role != Role.PRO || user.status != Status.REJECTED) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "복구 가능한 프로 유저가 아닙니다.")
         }
 
@@ -89,7 +90,7 @@ class AdminUserServiceImpl(
     }
 
     override fun getApprovedProUsers(): List<UserResponse> {
-        val users = userRepository.findAllByStatusAndRole(Status.NORMAL, Role.프로)
+        val users = userRepository.findAllByStatusAndRole(Status.NORMAL, Role.PRO)
         return users.map { UserResponse.from(it) }
     }
 

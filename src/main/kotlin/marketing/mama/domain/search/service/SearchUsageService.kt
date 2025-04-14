@@ -32,7 +32,7 @@ class SearchUsageService(
         val user = getCurrentUser()
 
         // ✅ 관리자, 개발자는 제한 없이 통과
-        if (user.role != Role.프로) return
+        if (user.role != Role.PRO) return
 
         val today = LocalDate.now()
 
@@ -52,7 +52,7 @@ class SearchUsageService(
         val user = getCurrentUser()
 
         // ✅ 관리자, 개발자는 제한 없이 통과
-        if (user.role != Role.프로) return
+        if (user.role != Role.PRO) return
 
         val today = LocalDate.now()
 
@@ -75,7 +75,7 @@ class SearchUsageService(
         val usage = searchUsageRepository.findByUserIdAndUsageDate(userId, today)
             ?: SearchUsage(user = user, usageDate = today, singleSearchCount = 0, rankingSearchCount = 0)
 
-        val isPro = user.role == Role.프로
+        val isPro = user.role == Role.PRO
 
         return SearchUsageInfoResponse(
             singleSearchLimit = if (isPro) 200 else Int.MAX_VALUE,
@@ -94,8 +94,8 @@ class SearchUsageService(
         val singleUsed = usage?.singleSearchCount ?: 0
         val rankingUsed = usage?.rankingSearchCount ?: 0
 
-        val singleLimit = if (user.role == Role.프로) 200 else Int.MAX_VALUE
-        val rankingLimit = if (user.role == Role.프로) 50 else Int.MAX_VALUE
+        val singleLimit = if (user.role == Role.PRO) 200 else Int.MAX_VALUE
+        val rankingLimit = if (user.role == Role.PRO) 50 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,

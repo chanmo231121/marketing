@@ -17,7 +17,7 @@ class AdminAdminServiceImpl(
 ) : AdminAdminService {
 
     override fun getPendingAdmins(): List<UserResponse> {
-        val admins = userRepository.findAllByRoleAndStatus(Role.관리자, Status.PENDING_APPROVAL)
+        val admins = userRepository.findAllByRoleAndStatus(Role.ADMIN, Status.WAITING)
         return admins.map { UserResponse.from(it) }
     }
 
@@ -38,7 +38,7 @@ class AdminAdminServiceImpl(
         val user = userRepository.findById(userId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다") }
 
-        if (user.role != Role.관리자) {
+        if (user.role != Role.ADMIN) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "관리자 유저만 거절할 수 있습니다")
         }
 
@@ -49,7 +49,7 @@ class AdminAdminServiceImpl(
     }
 
     override fun getRejectedAdmins(): List<UserResponse> {
-        return userRepository.findAllByRoleAndStatus(Role.관리자, Status.REJECTED)
+        return userRepository.findAllByRoleAndStatus(Role.ADMIN, Status.REJECTED)
             .map { UserResponse.from(it) }
     }
 
@@ -58,7 +58,7 @@ class AdminAdminServiceImpl(
         val user = userRepository.findById(userId)
             .orElseThrow { ResponseStatusException(HttpStatus.NOT_FOUND, "유저를 찾을 수 없습니다") }
 
-        if (user.role != Role.관리자 || user.status != Status.REJECTED) {
+        if (user.role != Role.ADMIN || user.status != Status.REJECTED) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "복구 가능한 관리자 유저가 아닙니다.")
         }
 
@@ -72,7 +72,7 @@ class AdminAdminServiceImpl(
     override fun getApprovedAdminsAndPros(): List<UserResponse> {
         val users = userRepository.findAllByStatusAndRoleIn(
             Status.NORMAL,
-            listOf(Role.관리자, Role.프로)
+            listOf(Role.ADMIN, Role.PRO)
         )
         return users.map { UserResponse.from(it) }
     }

@@ -17,33 +17,35 @@ class SearchLogService(
     fun logSearch(
         user: User,
         userName: String,
-        uuid: String?,
         ip: String?,
         keyword: String,
-        type: ActionType
+        type: ActionType,
+        uuid: String? = null
+
     ) {
         val log = SearchLog(
             user = user,
             userName = userName,
-            uuid = uuid,
             ipAddress = ip,
             keyword = keyword,
-            actionType = type
+            actionType = type,
+            uuid = uuid
+
         )
         searchLogRepository.save(log)
     }
 
-    fun logLogin(user: User, uuid: String, ip: String?) {
+    fun logLogin(user: User,  ip: String?) {
         val now = LocalDateTime.now()
         val log = SearchLog(
             user = user,
             userName = user.name,
-            uuid = uuid,
             ipAddress = ip,
             keyword = "-",
             actionType = ActionType.로그인,
             searchedAt = now,
-            loggedInAt = now
+            loggedInAt = now,
+            uuid = user.deviceId
         )
         searchLogRepository.save(log)
     }
@@ -86,10 +88,10 @@ fun SearchLog.toResponse(): SearchLogResponse {
     return SearchLogResponse(
         userName = this.userName,
         ipAddress = this.ipAddress,
-        uuid = this.uuid,
         actionType = this.actionType.name,
         keyword = this.keyword,
-        searchedAt = this.searchedAt
+        searchedAt = this.searchedAt,
+        uuid = this.uuid
     )
 
 }

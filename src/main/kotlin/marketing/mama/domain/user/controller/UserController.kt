@@ -18,6 +18,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException
+import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.core.context.SecurityContextHolder
 import org.springframework.web.bind.annotation.*
 import java.util.*
@@ -54,8 +55,7 @@ class UserController(
 
         searchLogService.logLogin(
             user = user,
-            uuid = loginRequest.deviceId,
-            ip = request.remoteAddr
+            ip = request.remoteAddr,
         )
 
         return ResponseEntity.status(HttpStatus.OK).body(loginResponse)
@@ -77,7 +77,11 @@ class UserController(
 
     @Operation(summary = "로그아웃")
     @PostMapping("/logout")
-    fun logout(request: HttpServletRequest, response: HttpServletResponse): ResponseEntity<String> {
+    fun logout(
+        request: HttpServletRequest,
+        response: HttpServletResponse,
+        @AuthenticationPrincipal principal: UserPrincipal // ✅ 인증 사용자 주입
+    ): ResponseEntity<String> {
         userService.logout(response, request)
         return ResponseEntity.ok("로그아웃 되었습니다.")
     }
@@ -104,5 +108,21 @@ class UserController(
         }
         return ResponseEntity.ok(message)
     }
+
+    @Operation(summary = "기기 승인 요청")
+    @PostMapping("/device-approval/request")
+    fun requestDeviceApproval(
+        @RequestBody payload: Map<String, String>,
+        @AuthenticationPrincipal principal: UserPrincipal
+    ): ResponseEntity<Map<String, String>> {
+        val deviceId = payload["deviceId"]
+            ?: return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(mapOf("message" to "deviceId가 필요합니다."))
+
+        val message = userService.requestDeviceApproval(principal.id, deviceId)
+        return ResponseEntity.ok(mapOf("message" to message))
+    }
+
+
 }
 

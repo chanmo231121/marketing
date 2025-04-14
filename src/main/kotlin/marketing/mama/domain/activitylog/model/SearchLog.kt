@@ -14,9 +14,6 @@ data class SearchLog(
     @JoinColumn(name = "user_id")
     val user: User,
 
-    @Column(nullable = false)
-    val uuid: String?,
-
     @Column(nullable = true)
     val ipAddress: String? = null,
 
@@ -34,7 +31,10 @@ data class SearchLog(
     val loggedInAt: LocalDateTime? = null,
 
     @Column(nullable = false)
-    val userName: String
+    val userName: String,
+
+    @Column(nullable = true)
+    val uuid: String? = null,
 
 ) : BaseEntity() {
 
@@ -48,9 +48,9 @@ fun SearchLog.toResponse(): SearchLogResponse {
     return SearchLogResponse(
         userName = this.userName,
         ipAddress = this.ipAddress,
-        uuid = this.uuid,
         actionType = this.actionType.name,
         keyword = this.keyword,
-        searchedAt = this.searchedAt
+        searchedAt = this.searchedAt,
+        uuid = this.uuid,
     )
 }
