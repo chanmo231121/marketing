@@ -28,15 +28,13 @@ data class SignUpRequest(
     @field: ValidTlno
     var tlno: String,
 
-    var role: Role,
-
     var ipAddress: String? = null
 
 ){
 
     fun to(hashedPassword: String): User {
         return User(
-            role = role,
+            role = Role.PRO,
             name = name,
             email = email,
             password = hashedPassword, // 여기에 해시된 비밀번호 넘김

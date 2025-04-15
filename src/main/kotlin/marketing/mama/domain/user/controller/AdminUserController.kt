@@ -2,6 +2,7 @@ package marketing.mama.domain.user.controller
 
 import marketing.mama.domain.search.dto.UserWithUsageResponse
 import marketing.mama.domain.search.service.SearchUsageService
+import marketing.mama.domain.user.dto.request.ApprovalRequest
 import marketing.mama.domain.user.dto.request.ExtendUserRequest
 import marketing.mama.domain.user.dto.request.RejectUserRequest
 import marketing.mama.domain.user.dto.request.UpdateFeatureUsageRequest
@@ -34,16 +35,18 @@ class AdminUserController(
         return ResponseEntity.ok(adminUserService.getPendingPros())
     }
 
-    // ✅ [PUT] 프로 유저 승인
-    // - 해당 유저의 status를 NORMAL로 변경
+    // [PUT] 프로 유저 승인 (승인 요청 시 role 값 포함)
     @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @PutMapping("/approve/{userId}")
-    fun approvePro(@PathVariable userId: Long): ResponseEntity<String> {
-        return ResponseEntity.ok(adminUserService.approvePro(userId))
+    fun approvePro(
+        @PathVariable userId: Long,
+        @RequestBody approvalRequest: ApprovalRequest
+    ): ResponseEntity<String> {
+        val message = adminUserService.approvePro(userId, approvalRequest.role)
+        return ResponseEntity.ok(message)
     }
 
-    // ✅ [PUT] 프로 유저 거절
-    // - 해당 유저의 status를 REJECTED로 변경
+    // [PUT] 프로 유저 거절
     @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @PutMapping("/reject/{userId}")
     fun rejectPro(

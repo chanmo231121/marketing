@@ -42,7 +42,7 @@ class User(
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
-    val role: Role,
+    var role: Role,
 
     @Column(name = "ip_address")
     var ipAddress: String? = null,

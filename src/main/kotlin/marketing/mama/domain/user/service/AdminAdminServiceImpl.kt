@@ -17,22 +17,26 @@ class AdminAdminServiceImpl(
 ) : AdminAdminService {
 
     override fun getPendingAdmins(): List<UserResponse> {
-        val admins = userRepository.findAllByRoleAndStatus(Role.ADMIN, Status.WAITING)
+        val admins = userRepository.findAllByRoleAndStatus(Role.ADMIN, Status.PENDING_APPROVAL)
         return admins.map { UserResponse.from(it) }
     }
 
+
+
     @Transactional
-    override fun approveAdmin(userId: Long): String {
+    override fun approveAdmin(userId: Long, role: Role): String {
         val user = userRepository.findByIdOrNull(userId)
             ?: throw IllegalArgumentException("해당 유저를 찾을 수 없습니다")
 
         user.status = Status.NORMAL
+        user.role = role  // ✅ DEV가 선택한 Role로 변경
         user.approvedAt = user.approvedAt ?: LocalDateTime.now()
         user.lastApprovedAt = LocalDateTime.now()
 
         userRepository.save(user)
         return "관리자 승인 완료"
     }
+
     @Transactional
     override fun rejectAdmin(userId: Long, reason: String): String {
         val user = userRepository.findById(userId)
@@ -74,6 +78,11 @@ class AdminAdminServiceImpl(
             Status.NORMAL,
             listOf(Role.ADMIN, Role.PRO)
         )
+        return users.map { UserResponse.from(it) }
+    }
+
+    override fun getReapprovalPendingAdmins(): List<UserResponse> {
+        val users = userRepository.findAllByRoleAndStatus(Role.ADMIN, Status.PENDING_REAPPROVAL)
         return users.map { UserResponse.from(it) }
     }
 

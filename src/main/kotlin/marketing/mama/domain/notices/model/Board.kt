@@ -1,19 +1,21 @@
-package marketing.mama.domain.post.model
+package marketing.mama.domain.notices.model
 
 
 
 import jakarta.persistence.*
 import marketing.mama.domain.user.model.User
 import marketing.mama.global.entity.BaseEntity
-import marketing.mama.global.exception.StringMutableListConverter
 
 
 @Entity
 @Table(name = "board")
 class Board(
+
+
     @Column(nullable = false)
     var title: String,
 
+    @Lob
     @Column(nullable = false)
     var content: String,
 
@@ -22,7 +24,10 @@ class Board(
 
     @JoinColumn(name = "user_id", nullable = false)
     @ManyToOne
-    val user: User
+    val user: User,
+
+    @Column(name = "is_pinned", nullable = false)
+    var isPinned: Boolean = false
 
 ) : BaseEntity() {
 

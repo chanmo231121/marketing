@@ -1,8 +1,10 @@
-package marketing.mama.domain.post.service
+package marketing.mama.domain.notices.service
 
-import marketing.mama.domain.post.dto.BoardResponse
-import marketing.mama.domain.post.dto.BoardRequest
-import marketing.mama.domain.post.repository.BoardRepository
+import marketing.mama.domain.notices.dto.BoardResponse
+import marketing.mama.domain.notices.dto.BoardRequest
+import marketing.mama.domain.notices.model.Board
+import marketing.mama.domain.notices.repository.BoardRepository
+import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.repository.UserRepository
 import marketing.mama.global.exception.ModelNotFoundException
 import marketing.mama.global.exception.UserNotMatchedException
@@ -40,10 +42,22 @@ class BoardServiceImpl(
         return BoardResponse.from(savedBoard) // 이 메소드가 savedBoard를 BoardResponse로 변환
     }
 
+    override fun getAllBoards(): List<BoardResponse> {
+        val boards = boardRepository.findAll().sortedWith(
+            compareByDescending<Board> { it.isPinned }.thenByDescending { it.createdAt }
+        )
+        return boards.map { BoardResponse.from(it) }
+    }
+
     // 게시글 수정
     override fun updateBoard(boardId: Long, boardRequest: BoardRequest, userPrincipal: UserPrincipal): BoardResponse {
-        // 로그인 유저가 디비에 있는지 확인
+        // 로그인 유저 정보 조회
         val user = userRepository.findByIdOrNull(userPrincipal.id) ?: throw ModelNotFoundException("user", userPrincipal.id)
+
+        // ADMIN, DEV만 수정할 수 있도록
+        if (user.role != Role.ADMIN && user.role != Role.DEV) {
+            throw UserNotMatchedException("수정 권한이 없습니다.") // 권한 오류
+        }
 
         // 작성자가 맞는지 확인
         val board = boardRepository.findByIdAndUserId(boardId, userPrincipal.id)
@@ -52,6 +66,8 @@ class BoardServiceImpl(
         // 게시글 수정
         board.title = boardRequest.title
         board.content = boardRequest.content
+        board.isPinned = boardRequest.isPinned
+
         val updatedBoard = boardRepository.save(board)
 
         return BoardResponse.from(updatedBoard)
@@ -59,8 +75,13 @@ class BoardServiceImpl(
 
     // 게시글 삭제
     override fun deleteBoard(boardId: Long, userPrincipal: UserPrincipal): String {
-        // 로그인 유저가 디비에 있는지 확인
+        // 로그인 유저 정보 조회
         val user = userRepository.findByIdOrNull(userPrincipal.id) ?: throw ModelNotFoundException("user", userPrincipal.id)
+
+        // ADMIN, DEV만 삭제할 수 있도록
+        if (user.role != Role.ADMIN && user.role != Role.DEV) {
+            throw UserNotMatchedException("삭제 권한이 없습니다.") // 권한 오류
+        }
 
         // 작성자가 맞는지 확인
         val board = boardRepository.findByIdAndUserId(boardId, userPrincipal.id)

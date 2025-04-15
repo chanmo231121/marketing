@@ -1,5 +1,6 @@
 package marketing.mama.domain.user.controller
 
+import marketing.mama.domain.user.dto.request.ApprovalRequest
 import marketing.mama.domain.user.dto.request.RejectUserRequest
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.service.AdminAdminService
@@ -21,10 +22,13 @@ class AdminApprovalController(
     }
 
     // ✅ 관리자 승인 처리
-    @PreAuthorize("hasRole('DEV')")
     @PutMapping("/approve/{userId}")
-    fun approveAdmin(@PathVariable userId: Long): ResponseEntity<String> {
-        return ResponseEntity.ok(adminAdminService.approveAdmin(userId))
+    @PreAuthorize("hasRole('DEV')")
+    fun approveAdmin(
+        @PathVariable userId: Long,
+        @RequestBody request: ApprovalRequest
+    ): ResponseEntity<String> {
+        return ResponseEntity.ok(adminAdminService.approveAdmin(userId, request.role))
     }
 
     // ✅ 관리자 거절 처리 (선택)
@@ -54,4 +58,11 @@ class AdminApprovalController(
     fun getApprovedAdminsAndPros(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminAdminService.getApprovedAdminsAndPros())
     }
+
+    @PreAuthorize("hasRole('DEV')")
+    @GetMapping("/reapproval-pending")
+    fun getReapprovalPendingAdmins(): ResponseEntity<List<UserResponse>> {
+        return ResponseEntity.ok(adminAdminService.getReapprovalPendingAdmins())
+    }
+
 }

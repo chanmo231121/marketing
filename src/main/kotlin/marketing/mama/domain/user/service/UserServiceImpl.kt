@@ -191,9 +191,6 @@ class UserServiceImpl(
         if (request.password != request.confirmpassword) {
             throw IllegalArgumentException("비밀번호와 확인 비밀번호가 일치하지 않습니다.")
         }
-        if (userRepository.existsByname(request.name)) {
-            throw IllegalStateException("이름이 이미 사용중입니다.")
-        }
 
         val hashedPassword = passwordEncoder.encode(request.password)
 

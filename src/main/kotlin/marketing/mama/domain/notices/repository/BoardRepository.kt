@@ -1,6 +1,6 @@
-package marketing.mama.domain.post.repository
+package marketing.mama.domain.notices.repository
 
-import marketing.mama.domain.post.model.Board
+import marketing.mama.domain.notices.model.Board
 import marketing.mama.domain.user.model.User
 import org.springframework.data.jpa.repository.JpaRepository
 

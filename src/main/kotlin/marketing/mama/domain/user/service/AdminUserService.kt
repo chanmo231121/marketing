@@ -7,7 +7,6 @@ import marketing.mama.domain.user.model.Role
 
 interface AdminUserService {
     fun getPendingPros(): List<UserResponse>
-    fun approvePro(userId: Long): String
     fun findRejectedUsers(): List<UserResponse>
     fun deleteUser(userId: Long)
     fun rejectPro(userId: Long, reason: String): String
@@ -15,5 +14,6 @@ interface AdminUserService {
     fun getApprovedProUsers(): List<UserResponse>
     fun getReapprovalPendingPros(): List<UserResponse>
     fun extendApproval(userId: Long, request: ExtendUserRequest)
+    fun approvePro(userId: Long, role: Role): String
 
 }

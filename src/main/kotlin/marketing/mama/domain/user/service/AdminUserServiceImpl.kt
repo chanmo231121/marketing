@@ -1,7 +1,6 @@
 package marketing.mama.domain.user.service
 
 import jakarta.transaction.Transactional
-import marketing.mama.domain.user.dto.request.ExtendUserRequest
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
 import marketing.mama.domain.user.model.Status
@@ -10,16 +9,12 @@ import org.springframework.data.repository.findByIdOrNull
 import org.springframework.http.HttpStatus
 import org.springframework.stereotype.Service
 import org.springframework.web.server.ResponseStatusException
-import java.time.LocalDate
 import java.time.LocalDateTime
-import java.time.format.DateTimeFormatter
 
 @Service
 class AdminUserServiceImpl(
-    private val userRepository: UserRepository,
-
+    private val userRepository: UserRepository
 ) : AdminUserService {
-
 
     override fun getReapprovalPendingPros(): List<UserResponse> {
         val users = userRepository.findAllByRoleAndStatus(Role.PRO, Status.PENDING_REAPPROVAL)
@@ -32,26 +27,33 @@ class AdminUserServiceImpl(
     }
 
     @Transactional
-    override fun approvePro(userId: Long): String {
+    override fun approvePro(userId: Long, role: Role): String {
         val user = userRepository.findByIdOrNull(userId)
             ?: throw IllegalArgumentException("해당 유저를 찾을 수 없습니다")
 
+        // 관리자가 요청한 role로 변경 (예: ADMIN, PRO)
+        user.role = role
+
+        // 승인 상태로 변경
         user.status = Status.NORMAL
         user.approvedAt = user.approvedAt ?: LocalDateTime.now()
         user.lastApprovedAt = LocalDateTime.now()
+        // approvedUntil을 현재 시점 기준 7일 후로 설정
+        // 프로 유저로 승인된 경우에만 만료일 설정 (7일 후)
 
-        // ✅ approvedUntil도 같이 설정 (현재 시점 기준 7일 후)
-        user.approvedUntil = user.lastApprovedAt?.plusDays(7)
-
+        if (role == Role.PRO) {
+            user.approvedUntil = user.lastApprovedAt?.plusDays(7)  // 프로 유저만 만료일 설정
+        } else {
+            user.approvedUntil = null  // 관리자일 경우 만료일은 필요 없으므로 null
+        }
         userRepository.save(user)
-        return "승인되었습니다."
+        return "승인되었습니다. 부여된 역할: ${role.name}"
     }
 
     override fun findRejectedUsers(): List<UserResponse> {
         return userRepository.findAllByRoleAndStatus(Role.PRO, Status.REJECTED)
             .map { UserResponse.from(it) }
     }
-
 
     override fun deleteUser(userId: Long) {
         if (!userRepository.existsById(userId)) throw RuntimeException("존재하지 않는 사용자입니다.")
@@ -94,21 +96,18 @@ class AdminUserServiceImpl(
         return users.map { UserResponse.from(it) }
     }
 
-    override fun extendApproval(userId: Long, request: ExtendUserRequest) {
+    override fun extendApproval(userId: Long, request: marketing.mama.domain.user.dto.request.ExtendUserRequest) {
         val user = userRepository.findById(userId)
             .orElseThrow { IllegalArgumentException("유저를 찾을 수 없습니다.") }
 
         user.status = Status.NORMAL
 
         if (request.autoExtend) {
-            // 자동 연장 ON: approvedUntil을 현재 기준 +7일로 자동 설정
             user.lastApprovedAt = LocalDateTime.now()
             user.approvedUntil = user.lastApprovedAt?.plusDays(7)
         } else {
-            // 수동 연장: 프론트에서 날짜를 지정해온 것 적용
-            val formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
-            val newDate = LocalDate.parse(request.newApprovedUntil, formatter)
-
+            val formatter = java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd")
+            val newDate = java.time.LocalDate.parse(request.newApprovedUntil, formatter)
             user.lastApprovedAt = newDate.atStartOfDay()
             user.approvedUntil = newDate.atStartOfDay()
         }
@@ -117,4 +116,5 @@ class AdminUserServiceImpl(
         userRepository.save(user)
     }
 
+    // 기타 관리자 관련 메소드들은 그대로 유지합니다.
 }

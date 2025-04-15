@@ -1,8 +1,8 @@
 // BoardResponse.kt
 
-package marketing.mama.domain.post.dto
+package marketing.mama.domain.notices.dto
 
-import marketing.mama.domain.post.model.Board
+import marketing.mama.domain.notices.model.Board
 import java.time.ZonedDateTime
 
 data class BoardResponse(
@@ -11,6 +11,8 @@ data class BoardResponse(
     val content: String,
     val name: String,        // 작성자의 nickname
     val createdAt: ZonedDateTime,  // 수정: creatAt -> createdAt
+    val isPinned: Boolean // 추가
+
 ) {
     companion object {
         fun from(board: Board): BoardResponse {
@@ -19,7 +21,9 @@ data class BoardResponse(
                 title = board.title,
                 content = board.content,
                 name = board.name,   // 작성자 nickname
-                createdAt = board.createdAt // 게시글 생성일시
+                createdAt = board.createdAt, // 게시글 생성일시
+                isPinned = board.isPinned // 포함
+
             )
         }
     }
