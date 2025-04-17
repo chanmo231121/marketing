@@ -51,44 +51,61 @@ class BoardServiceImpl(
 
     // 게시글 수정
     override fun updateBoard(boardId: Long, boardRequest: BoardRequest, userPrincipal: UserPrincipal): BoardResponse {
-        // 로그인 유저 정보 조회
-        val user = userRepository.findByIdOrNull(userPrincipal.id) ?: throw ModelNotFoundException("user", userPrincipal.id)
+        val user = userRepository.findByIdOrNull(userPrincipal.id)
+            ?: throw ModelNotFoundException("user", userPrincipal.id)
 
-        // ADMIN, DEV만 수정할 수 있도록
-        if (user.role != Role.ADMIN && user.role != Role.DEV) {
-            throw UserNotMatchedException("수정 권한이 없습니다.") // 권한 오류
+        val board = boardRepository.findById(boardId)
+            .orElseThrow { ModelNotFoundException("board", boardId) }
+
+        // ✅ DEV는 모두 수정 가능
+        if (user.role == Role.DEV) {
+            // 통과
         }
-
-        // 작성자가 맞는지 확인
-        val board = boardRepository.findByIdAndUserId(boardId, userPrincipal.id)
-            ?: throw UserNotMatchedException()
+        // ✅ ADMIN은 자기 글만 수정 가능
+        else if (user.role == Role.ADMIN) {
+            if (board.user.id != user.id) {
+                throw UserNotMatchedException("ADMIN은 본인이 작성한 글만 수정할 수 있습니다.")
+            }
+        }
+        // 🚫 그 외는 수정 불가
+        else {
+            throw UserNotMatchedException("수정 권한이 없습니다.")
+        }
 
         // 게시글 수정
         board.title = boardRequest.title
         board.content = boardRequest.content
         board.isPinned = boardRequest.isPinned
 
-        val updatedBoard = boardRepository.save(board)
-
-        return BoardResponse.from(updatedBoard)
+        return BoardResponse.from(boardRepository.save(board))
     }
 
     // 게시글 삭제
     override fun deleteBoard(boardId: Long, userPrincipal: UserPrincipal): String {
         // 로그인 유저 정보 조회
-        val user = userRepository.findByIdOrNull(userPrincipal.id) ?: throw ModelNotFoundException("user", userPrincipal.id)
+        val user = userRepository.findByIdOrNull(userPrincipal.id)
+            ?: throw ModelNotFoundException("user", userPrincipal.id)
 
-        // ADMIN, DEV만 삭제할 수 있도록
-        if (user.role != Role.ADMIN && user.role != Role.DEV) {
-            throw UserNotMatchedException("삭제 권한이 없습니다.") // 권한 오류
+        // 게시글 조회
+        val board = boardRepository.findByIdOrNull(boardId)
+            ?: throw ModelNotFoundException("board", boardId)
+
+        // DEV는 모든 글 삭제 가능
+        if (user.role == Role.DEV) {
+            boardRepository.delete(board)
+            return "게시글 삭제 완료"
         }
 
-        // 작성자가 맞는지 확인
-        val board = boardRepository.findByIdAndUserId(boardId, userPrincipal.id)
-            ?: throw UserNotMatchedException()
+        // ADMIN은 본인 글만 삭제 가능
+        if (user.role == Role.ADMIN) {
+            if (board.user.id != user.id) {
+                throw UserNotMatchedException("ADMIN은 본인이 작성한 글만 삭제할 수 있습니다.")
+            }
+            boardRepository.delete(board)
+            return "게시글 삭제 완료"
+        }
 
-        // 게시글 삭제
-        boardRepository.delete(board)
-        return "게시글 삭제 완료"
+        // 그 외 권한 없음
+        throw UserNotMatchedException("삭제 권한이 없습니다.")
     }
 }

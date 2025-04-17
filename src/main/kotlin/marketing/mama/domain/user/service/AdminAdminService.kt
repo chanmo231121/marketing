@@ -11,6 +11,9 @@ interface AdminAdminService {
     fun getApprovedAdminsAndPros(): List<UserResponse>
     fun getReapprovalPendingAdmins(): List<UserResponse>
     fun approveAdmin(userId: Long, role: Role): String
+    fun deleteAdmin(userId: Long): String
+    fun getAllUsers(): List<UserResponse>
+    fun expireAdmin(userId: Long): String
 
 
 }

@@ -29,14 +29,12 @@ class AdminUserController(
 
     // ✅ [GET] 승인 대기 중인 프로 유저 목록 조회
     // - Status: PENDING_APPROVAL
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @GetMapping("/pending-pros")
     fun getPendingPros(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminUserService.getPendingPros())
     }
 
     // [PUT] 프로 유저 승인 (승인 요청 시 role 값 포함)
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @PutMapping("/approve/{userId}")
     fun approvePro(
         @PathVariable userId: Long,
@@ -47,7 +45,6 @@ class AdminUserController(
     }
 
     // [PUT] 프로 유저 거절
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @PutMapping("/reject/{userId}")
     fun rejectPro(
         @PathVariable userId: Long,
@@ -58,7 +55,6 @@ class AdminUserController(
 
     // ✅ [GET] 거절된 유저 목록 조회
     // - Status: REJECTED인 유저 목록 반환
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @GetMapping("/rejected")
     fun getRejectedUsers(): ResponseEntity<List<UserResponse>> {
         val rejectedUsers = adminUserService.findRejectedUsers()
@@ -68,20 +64,17 @@ class AdminUserController(
 
     // ✅ [DELETE] 유저 삭제
     // - 유저 ID로 완전 삭제 (거절된 유저 등)
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @DeleteMapping("/{userId}")
     fun deleteUser(@PathVariable userId: Long): ResponseEntity<Void> {
         adminUserService.deleteUser(userId)
         return ResponseEntity.noContent().build()
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @PutMapping("/restore/{userId}")
     fun restorePro(@PathVariable userId: Long): ResponseEntity<String> {
         return ResponseEntity.ok(adminUserService.restorePro(userId))
     }
 
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @GetMapping("/pro")
     fun getApprovedProUsers(): ResponseEntity<List<UserResponse>> {
         val users = adminUserService.getApprovedProUsers()
@@ -89,14 +82,12 @@ class AdminUserController(
     }
 
     // ✅ [GET] 재승인 대기 중인 프로 유저 목록 조회
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     @GetMapping("/reapproval-pending-pros")
     fun getReapprovalPendingPros(): ResponseEntity<List<UserResponse>> {
         return ResponseEntity.ok(adminUserService.getReapprovalPendingPros())
     }
 
     @PutMapping("/extend/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     fun extendUserApproval(
         @PathVariable userId: Long,
         @RequestBody request: ExtendUserRequest
@@ -107,7 +98,6 @@ class AdminUserController(
 
 
     @GetMapping("/{userId}/detail")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     fun getUserDetail(@PathVariable userId: Long): ResponseEntity<UserWithUsageResponse> {
         val user = userRepository.findByIdOrNull(userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")
@@ -123,7 +113,6 @@ class AdminUserController(
     }
 
     @PutMapping("/{userId}/feature-usage")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     fun updateFeatureUsage(
         @PathVariable userId: Long,
         @RequestBody request: UpdateFeatureUsageRequest
@@ -145,7 +134,6 @@ class AdminUserController(
     }
 
     @PutMapping("/expire/{userId}") // ← URL 충돌 방지
-    @PreAuthorize("hasRole('ADMIN') or hasRole('DEV')")
     fun expireUserImmediately(@PathVariable userId: Long): ResponseEntity<String> {
         val user = userRepository.findByIdOrNull(userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")
@@ -160,7 +148,6 @@ class AdminUserController(
     }
 
     @PutMapping("/{userId}/usage-limit")
-    @PreAuthorize("hasAnyRole('ADMIN', 'DEV')")
     fun updateUsageLimit(
         @PathVariable userId: Long,
         @RequestBody req: Map<String, Any>
