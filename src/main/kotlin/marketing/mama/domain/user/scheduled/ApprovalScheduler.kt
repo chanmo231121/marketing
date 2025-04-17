@@ -22,7 +22,7 @@ class ApprovalScheduler(
             .filter { it.approvedUntil?.isBefore(now) == true && !it.autoExtend }
 
         expiredUsers.forEach {
-            it.status = Status.PENDING_REAPPROVAL
+            it.status = Status.PENDING_APPROVAL
         }
         userRepository.saveAll(expiredUsers)
         println("✅ [스케줄러] 수동 재승인 대상: ${expiredUsers.size}")

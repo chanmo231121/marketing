@@ -138,7 +138,7 @@ class AdminUserController(
         val user = userRepository.findByIdOrNull(userId)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND, "해당 유저를 찾을 수 없습니다.")
 
-        user.status = Status.PENDING_REAPPROVAL
+        user.status = Status.PENDING_APPROVAL
         user.approvedUntil = null
         user.autoExtend = false
 

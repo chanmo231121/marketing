@@ -283,9 +283,6 @@ class UserServiceImpl(
             throw IllegalStateException("⚠️ 이 기기는 승인되지 않았습니다. 관리자에게 재승인 요청을 해주세요.")
         }
 
-        if (user.status != Status.NORMAL) {
-            throw IllegalStateException("🚫 현재 계정 상태로는 기능을 이용할 수 없습니다. 관리자 승인을 기다려주세요.")
-        }
     }
 /*
 
