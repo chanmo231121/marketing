@@ -276,7 +276,7 @@ class UserServiceImpl(
         if (user.role == Role.ADMIN || user.role == Role.DEV) return
 
         if (user.deviceId == null) {
-            throw IllegalStateException("⛔ 기기 승인 요청이 필요합니다. 오른쪽 상단에서 요청해주세요.")
+            throw IllegalStateException("⛔ 기기 승인 요청이 필요합니다.")
         }
 
         if (user.deviceId != currentDeviceId) {
