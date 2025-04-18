@@ -29,6 +29,7 @@ class WebConfig(
                 "https://api.maglo.kr"
                 )
 
+
             .allowedMethods("*") // 모든 HTTP 메서드 허용
             .allowedHeaders("*") // 모든 헤더 허용
             .allowCredentials(true) // 자격 증명 허용 (예: 쿠키, 인증)
