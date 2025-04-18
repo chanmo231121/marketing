@@ -27,16 +27,20 @@ class AdminAdminServiceImpl(
 
 
     @Transactional
-    override fun approveAdmin(userId: Long, role: Role): String {
+    override fun approveAdmin(userId: Long, role: Role, approvedUntil: LocalDateTime?, autoExtend: Boolean?): String {
         val user = userRepository.findByIdOrNull(userId)
-            ?: throw IllegalArgumentException("해당 유저를 찾을 수 없습니다")
+            ?: throw ModelNotFoundException("User", userId)
+
+        user.role = role
+
+        if (role == Role.PRO && approvedUntil != null) {
+            user.approvedUntil = approvedUntil
+            user.autoExtend = autoExtend ?: false
+        }
 
         user.status = Status.NORMAL
-        user.role = role  // ✅ DEV가 선택한 Role로 변경
-        user.approvedAt = user.approvedAt ?: LocalDateTime.now()
-        user.lastApprovedAt = LocalDateTime.now()
-
         userRepository.save(user)
+
         return "관리자 승인 완료"
     }
 

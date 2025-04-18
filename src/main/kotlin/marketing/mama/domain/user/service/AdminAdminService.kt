@@ -2,6 +2,7 @@ package marketing.mama.domain.user.service
 
 import marketing.mama.domain.user.dto.response.UserResponse
 import marketing.mama.domain.user.model.Role
+import java.time.LocalDateTime
 
 interface AdminAdminService {
     fun getPendingAdmins(): List<UserResponse>
@@ -10,7 +11,7 @@ interface AdminAdminService {
     fun restoreAdmin(userId: Long): String
     fun getApprovedAdminsAndPros(): List<UserResponse>
     fun getReapprovalPendingAdmins(): List<UserResponse>
-    fun approveAdmin(userId: Long, role: Role): String
+    fun approveAdmin(userId: Long, role: Role, approvedUntil: LocalDateTime?, autoExtend: Boolean?): String
     fun deleteAdmin(userId: Long): String
     fun getAllUsers(): List<UserResponse>
     fun expireAdmin(userId: Long): String

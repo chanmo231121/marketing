@@ -275,12 +275,13 @@ class UserServiceImpl(
     override fun validateDevice(user: User, currentDeviceId: String?) {
         if (user.role == Role.ADMIN || user.role == Role.DEV) return
 
-        if (user.deviceId == null) {
+        if (user.deviceId == null || currentDeviceId.isNullOrBlank()) {
             throw IllegalStateException("⛔ 기기 승인 요청이 필요합니다.")
         }
 
+        // ② header 값이 있고, 기기 ID가 불일치할 때
         if (user.deviceId != currentDeviceId) {
-            throw IllegalStateException("⚠️ 이 기기는 승인되지 않았습니다. 관리자에게 재승인 요청을 해주세요.")
+            throw IllegalStateException("⚠️ 기기 불일치. 재승인을 요청해주세요.")
         }
 
     }

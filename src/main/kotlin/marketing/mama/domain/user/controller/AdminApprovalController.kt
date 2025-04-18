@@ -26,7 +26,14 @@ class AdminApprovalController(
         @PathVariable userId: Long,
         @RequestBody request: ApprovalRequest
     ): ResponseEntity<String> {
-        return ResponseEntity.ok(adminAdminService.approveAdmin(userId, request.role))
+        return ResponseEntity.ok(
+            adminAdminService.approveAdmin(
+                userId,
+                request.role,
+                request.approvedUntil,
+                request.autoExtend
+            )
+        )
     }
 
     // ✅ 관리자 거절 처리 (선택)
