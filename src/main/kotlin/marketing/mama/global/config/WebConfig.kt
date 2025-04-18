@@ -26,7 +26,7 @@ class WebConfig(
                 "http://43.203.93.162:8080",
                 "https://maglo.kr",
                 "https://www.maglo.kr",
-
+                "https://api.maglo.kr"
                 )
 
             .allowedMethods("*") // 모든 HTTP 메서드 허용
