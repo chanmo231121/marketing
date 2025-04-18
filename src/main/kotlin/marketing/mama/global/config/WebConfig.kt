@@ -24,6 +24,9 @@ class WebConfig(
                 "http://maglo4.s3-website.ap-northeast-2.amazonaws.com",
                 "http://maglo6.s3-website.ap-northeast-2.amazonaws.com",
                 "http://43.203.93.162:8080",
+                "https://maglo.kr",
+                "https://www.maglo.kr",
+
                 )
 
             .allowedMethods("*") // 모든 HTTP 메서드 허용
