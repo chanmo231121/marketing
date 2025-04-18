@@ -124,3 +124,4 @@ object Signature {
         return Base64.getEncoder().encodeToString(mac.doFinal(message.toByteArray(Charsets.UTF_8)))
     }
 }
+
