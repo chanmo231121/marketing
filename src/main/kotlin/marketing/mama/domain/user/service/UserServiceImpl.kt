@@ -80,8 +80,9 @@ class UserServiceImpl(
         // ✅ 보안 쿠키로 refresh token 저장
         val cookie = ResponseCookie.from("refresh_token", refreshToken)
             .httpOnly(true)
-            .secure(true) // HTTPS 되면 true로
-            .sameSite("Lax") // HTTP 환경에서 가장 안정적
+            .secure(true)
+            .sameSite("None")
+            .domain("maglo.kr") // ✅ 명시 필요!
             .path("/")
             .maxAge(7 * 24 * 60 * 60)
             .build()
