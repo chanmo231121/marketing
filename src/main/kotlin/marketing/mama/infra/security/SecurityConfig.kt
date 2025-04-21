@@ -47,7 +47,8 @@ class SecurityConfig(
                     "/v3/api-docs/**",
                     "/api/admin/logs/custom",
                     "/api/v1/boards/**",
-                    "/api/v1/banner"
+                    "/api/v1/banner",
+                    "/api/keyword-mix/**"
                     ).permitAll()
                     // 위 URI를 제외하곤 모두 인증이 되어야 함.
                     .anyRequest().authenticated()

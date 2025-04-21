@@ -53,7 +53,6 @@ class KeywordRankingController(
                     }
                 }
             }
-            println("🔥 isFirst 헤더 값: $isFirst")
 
             searchLogService.logSearch(
                 user = user,
