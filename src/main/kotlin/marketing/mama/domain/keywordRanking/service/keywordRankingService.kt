@@ -19,8 +19,10 @@ class KeywordRankingService(
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val logger = LoggerFactory.getLogger(KeywordRankingService::class.java)
 
-    fun getNaverAdData(keywords: List<String>): NaverAdResult {
-        searchUsageService.incrementRankingSearchWithLimit()
+    fun getNaverAdData(keywords: List<String>, isFirst: Boolean): NaverAdResult {
+        if (isFirst) {
+            searchUsageService.incrementRankingSearchWithLimit()
+        }
 
         val results = mutableListOf<Map<String, Any>>()
         val failedKeywords = mutableListOf<String>()

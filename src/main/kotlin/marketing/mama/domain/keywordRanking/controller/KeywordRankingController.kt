@@ -27,8 +27,9 @@ class KeywordRankingController(
     @Operation(summary = "네이버 검색광고 입찰순위 (POST)")
     @PostMapping("/search")
     fun searchNaverAds(
-        @RequestBody body: Map<String, List<String>>,  // ✅ 수정: List<String>으로 받음
+        @RequestBody body: Map<String, List<String>>,
         @RequestHeader("X-Device-Id") deviceId: String?,
+        @RequestHeader("X-Is-First", defaultValue = "false") isFirst: Boolean,
         @AuthenticationPrincipal userPrincipal: UserPrincipal
     ): ResponseEntity<Any> {
         return try {
@@ -52,8 +53,8 @@ class KeywordRankingController(
                     }
                 }
             }
+            println("🔥 isFirst 헤더 값: $isFirst")
 
-            // 로그 저장
             searchLogService.logSearch(
                 user = user,
                 userName = user.name,
@@ -63,14 +64,12 @@ class KeywordRankingController(
                 uuid = user.deviceId
             )
 
-            // 광고 검색 실행
-            val result: NaverAdResult = keywordRankingService.getNaverAdData(keywordList)
+            val result: NaverAdResult = keywordRankingService.getNaverAdData(keywordList, isFirst)
 
-            // 프론트에 성공/실패 구분해서 전달
             return ResponseEntity.ok(
                 mapOf(
                     "data" to result.data,
-                    "failedKeywords" to result.failedKeywords  // ✅ 이름 변경 (프론트랑 맞춤)
+                    "failedKeywords" to result.failedKeywords
                 )
             )
 
