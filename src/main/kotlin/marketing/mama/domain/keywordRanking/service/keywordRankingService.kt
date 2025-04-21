@@ -1,5 +1,6 @@
 package marketing.mama.domain.keywordRanking.service
 
+import marketing.mama.domain.keywordRanking.dto.NaverAdResult
 import marketing.mama.domain.search.service.SearchUsageService
 import org.jsoup.Jsoup
 import org.jsoup.Connection
@@ -15,34 +16,40 @@ import java.util.concurrent.TimeUnit
 class KeywordRankingService(
     private val searchUsageService: SearchUsageService
 ) {
-
     private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
     private val logger = LoggerFactory.getLogger(KeywordRankingService::class.java)
 
-    fun getNaverAdData(keywords: List<String>): List<Map<String, Any>> {
-        // 🔒 사용량 체크 및 증가
+    fun getNaverAdData(keywords: List<String>): NaverAdResult {
         searchUsageService.incrementRankingSearchWithLimit()
 
         val results = mutableListOf<Map<String, Any>>()
+        val failedKeywords = mutableListOf<String>()
         val executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors())
 
         val futures = keywords.map { keyword ->
-            executor.submit<List<Map<String, Any>>> {
-                extractData(keyword)
+            executor.submit<Pair<String, List<Map<String, Any>>>> {
+                keyword to extractData(keyword)
             }
         }
 
         futures.forEach { future ->
             try {
-                results.addAll(future.get())
+                val (keyword, data) = future.get()
+                if (data.isEmpty()) {
+                    failedKeywords.add(keyword)
+                } else {
+                    results.addAll(data)
+                }
             } catch (e: Exception) {
-                logger.error("데이터 처리 중 오류 발생: ${e.message}", e)
+                logger.error("키워드 처리 실패: ${e.message}", e)
+                failedKeywords.add("처리 실패 키워드")
             }
         }
 
         executor.shutdown()
         executor.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS)
-        return results
+
+        return NaverAdResult(data = results, failedKeywords = failedKeywords)
     }
 
     private fun extractData(keyword: String): List<Map<String, Any>> {
@@ -64,9 +71,7 @@ class KeywordRankingService(
                 val encryptedUrl = titleElement?.attr("href") ?: ""
                 val originalUrl = try {
                     Jsoup.connect(encryptedUrl).followRedirects(false).execute().header("Location") ?: encryptedUrl
-                } catch (e: Exception) {
-                    null
-                }
+                } catch (e: Exception) { null }
 
                 val sellerName = item.selectFirst("a.site")?.text()?.trim()
                     ?: item.selectFirst("a.url")?.text()?.trim()
@@ -104,9 +109,7 @@ class KeywordRankingService(
                 val encryptedUrl = item.selectFirst("a")?.attr("href") ?: ""
                 val originalUrl = try {
                     Jsoup.connect(encryptedUrl).followRedirects(false).execute().header("Location") ?: encryptedUrl
-                } catch (e: Exception) {
-                    null
-                }
+                } catch (e: Exception) { null }
 
                 val sellerName = item.selectFirst("span.site")?.text()?.trim()
                     ?: item.selectFirst("span.url_link")?.text()?.trim()
