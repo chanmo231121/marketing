@@ -1,6 +1,7 @@
 package marketing.mama.domain.user.model
 
 import jakarta.persistence.*
+import marketing.mama.domain.refreshToken.model.RefreshToken
 import marketing.mama.global.entity.BaseEntity
 import marketing.mama.global.exception.StringMutableListConverter
 import java.time.LocalDateTime
@@ -83,6 +84,9 @@ class User(
 
     @Column(name = "ranking_search_limit")
     var rankingSearchLimit: Int? = 50,
+
+    @OneToMany(mappedBy = "user", cascade = [CascadeType.REMOVE], orphanRemoval = true)
+    val refreshTokens: MutableList<RefreshToken> = mutableListOf()
 
     ) : BaseEntity() {
 

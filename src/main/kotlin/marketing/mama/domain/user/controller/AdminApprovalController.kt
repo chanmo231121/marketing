@@ -66,6 +66,7 @@ class AdminApprovalController(
     }
 
     @DeleteMapping("/{userId}")
+    @PreAuthorize("hasRole('DEV')")
     fun deleteUser(@PathVariable userId: Long): ResponseEntity<Void> {
         adminAdminService.deleteAdmin(userId)
         return ResponseEntity.noContent().build()
