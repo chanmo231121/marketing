@@ -31,10 +31,10 @@ class KeywordController(
     @PreAuthorize("isAuthenticated()")
     fun getKeywords(
         @RequestParam("hintKeyword") hintKeyword: String,
-        @RequestHeader("X-Device-Id") deviceId: String?, // ✅ 추가
+        @RequestParam(name = "isFirst", required = false, defaultValue = "false") isFirst: Boolean, // ✅ 추가
+        @RequestHeader("X-Device-Id") deviceId: String?,
         @AuthenticationPrincipal userPrincipal: UserPrincipal
     ): ResponseEntity<Any> {
-        // 입력받은 키워드를 콤마(,)로 구분하여 리스트로 만듦
         val hintKeywords = hintKeyword.split(",").map { it.trim() }.filter { it.isNotEmpty() }
 
         if (hintKeywords.isEmpty()) {
@@ -47,41 +47,34 @@ class KeywordController(
                 .body(mapOf("error" to "최대 5개의 키워드까지 조회할 수 있습니다."))
         }
 
-        // 사용자 정보 조회
         val user = userRepository.findById(userPrincipal.id).orElseThrow()
         userService.validateDevice(user, deviceId)
 
-
-        // 사용자 상태가 PENDING_APPROVAL이면,
-        // 검색 결과 대신 승인 요청 메시지만 반환하도록 처리.
         if (user.role.name != "ADMIN") {
-            if (user.status == Status.PENDING_APPROVAL) {
-                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
-            }
-
-            if (user.status == Status.PENDING_REAPPROVAL) {
-                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 기간만료! 재승인을 해주세요."))
-            }
-
-            if (user.status == Status.WAITING) {
-                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
-            }
-            if (!user.canUseSingleSearch) {
-                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 단일검색 기능 사용이 제한된 계정입니다. 관리자에게 문의해주세요."))
+            when (user.status) {
+                Status.PENDING_APPROVAL, Status.WAITING ->
+                    return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
+                Status.PENDING_REAPPROVAL ->
+                    return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 기간만료! 재승인을 해주세요."))
+                else -> {
+                    if (!user.canUseSingleSearch) {
+                        return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 단일검색 기능 사용이 제한된 계정입니다. 관리자에게 문의해주세요."))
+                    }
+                }
             }
         }
 
-        // 로그 저장 (승인된 사용자인 경우에만 로그를 남김)
-        searchLogService.logSearch(
-            user = user,
-            userName = user.name,
-            ip = user.ipAddress,  // 혹은 request.remoteAddr를 사용할 수 있음
-            keyword = hintKeywords.joinToString(", "),
-            type = ActionType.단일검색,
-            uuid = user.deviceId
-
-
-        )
+        // ✅ isFirst=true일 때만 로그 저장
+        if (isFirst) {
+            searchLogService.logSearch(
+                user = user,
+                userName = user.name,
+                ip = user.ipAddress,
+                keyword = hintKeywords.joinToString(", ").take(255),
+                type = ActionType.단일검색,
+                uuid = user.deviceId
+            )
+        }
 
         val results = try {
             keywordService.getKeywords(hintKeywords)
