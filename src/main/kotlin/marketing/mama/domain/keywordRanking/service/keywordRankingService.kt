@@ -20,7 +20,7 @@ class KeywordRankingService(
     private val logger = LoggerFactory.getLogger(KeywordRankingService::class.java)
 
     fun getNaverAdData(keywords: List<String>): List<Map<String, Any>> {
-        // 사용량 체크 및 증가
+        // 🔒 사용량 체크 및 증가
         searchUsageService.incrementRankingSearchWithLimit()
 
         val results = mutableListOf<Map<String, Any>>()
@@ -52,7 +52,7 @@ class KeywordRankingService(
         val pcRows = mutableListOf<Map<String, Any>>()
         val mobileRows = mutableListOf<Map<String, Any>>()
 
-        // ── PC 광고 추출 ─────────────────────────────────────────────
+        // PC 광고 추출
         try {
             val doc = createJsoupConnection(pcUrl).get()
             val items = doc.select("#content > div > ol > li > div.inner")
@@ -61,21 +61,15 @@ class KeywordRankingService(
                 val titleElement = item.selectFirst("a.tit_wrap")
                 val title = titleElement?.text()?.trim() ?: "No Title"
                 val subtitle = item.selectFirst(".link_desc")?.text()?.trim() ?: "No Subtitle"
-
                 val encryptedUrl = titleElement?.attr("href") ?: ""
                 val originalUrl = try {
-                    Jsoup.connect(encryptedUrl)
-                        .followRedirects(false)
-                        .execute()
-                        .header("Location")
-                        ?: encryptedUrl
+                    Jsoup.connect(encryptedUrl).followRedirects(false).execute().header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
-                    encryptedUrl
+                    null
                 }
 
-                // sellerName이 없으면 span.lnk_tit의 텍스트로 가져오기
                 val sellerName = item.selectFirst("a.site")?.text()?.trim()
-                    ?: item.selectFirst("span.lnk_tit")?.text()?.trim()
+                    ?: item.selectFirst("a.url")?.text()?.trim()
                     ?: "No Seller Name"
 
                 val period = item.selectFirst(".period_area .txt")?.text()?.trim() ?: "No Period"
@@ -90,7 +84,7 @@ class KeywordRankingService(
                         "Subtitle" to subtitle,
                         "SellerName" to sellerName,
                         "Period" to period,
-                        "Main URL" to originalUrl
+                        "Main URL" to (originalUrl ?: "")
                     )
                 )
             }
@@ -98,7 +92,7 @@ class KeywordRankingService(
             logger.error("키워드 '$keyword'의 PC 데이터 추출 실패: ${e.message}", e)
         }
 
-        // ── Mobile 광고 추출 ──────────────────────────────────────────
+        // Mobile 광고 추출
         try {
             val doc = createJsoupConnection(mobileUrl).get()
             val items = doc.select("#contentsList > li")
@@ -107,21 +101,15 @@ class KeywordRankingService(
                 val titleElement = item.selectFirst("div.tit_wrap div.tit_area")
                 val title = titleElement?.text()?.trim() ?: "No Title"
                 val subtitle = item.selectFirst(".desc")?.text()?.trim() ?: "No Subtitle"
-
                 val encryptedUrl = item.selectFirst("a")?.attr("href") ?: ""
                 val originalUrl = try {
-                    Jsoup.connect(encryptedUrl)
-                        .followRedirects(false)
-                        .execute()
-                        .header("Location")
-                        ?: encryptedUrl
+                    Jsoup.connect(encryptedUrl).followRedirects(false).execute().header("Location") ?: encryptedUrl
                 } catch (e: Exception) {
-                    encryptedUrl
+                    null
                 }
 
-                // Mobile에서도 span.site 없으면 span.lnk_tit 사용
                 val sellerName = item.selectFirst("span.site")?.text()?.trim()
-                    ?: item.selectFirst("span.tit")?.text()?.trim()
+                    ?: item.selectFirst("span.url_link")?.text()?.trim()
                     ?: "No Seller Name"
 
                 val period = item.selectFirst(".period_area .txt")?.text()?.trim() ?: "No Period"
@@ -136,7 +124,7 @@ class KeywordRankingService(
                         "Subtitle" to subtitle,
                         "SellerName" to sellerName,
                         "Period" to period,
-                        "Main URL" to originalUrl
+                        "Main URL" to (originalUrl ?: "")
                     )
                 )
             }
