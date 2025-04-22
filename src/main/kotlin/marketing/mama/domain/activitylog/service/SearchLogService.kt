@@ -50,6 +50,7 @@ class SearchLogService(
         searchLogRepository.save(log)
     }
 
+
     fun getLogsByUserIdAndDate(userId: Long, date: LocalDate): List<SearchLogResponse> {
         val startDateTime = date.atStartOfDay()
         val endDateTime = date.plusDays(1).atStartOfDay()
