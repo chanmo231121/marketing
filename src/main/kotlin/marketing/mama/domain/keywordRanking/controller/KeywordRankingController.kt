@@ -54,14 +54,16 @@ class KeywordRankingController(
                 }
             }
 
-            searchLogService.logSearch(
-                user = user,
-                userName = user.name,
-                ip = user.ipAddress,
-                keyword = keywordList.joinToString(", ").take(255),
-                type = ActionType.랭킹검색,
-                uuid = user.deviceId
-            )
+            if (isFirst) {
+                searchLogService.logSearch(
+                    user = user,
+                    userName = user.name,
+                    ip = user.ipAddress,
+                    keyword = keywordList.joinToString(", ").take(255),
+                    type = ActionType.랭킹검색,
+                    uuid = user.deviceId
+                )
+            }
 
             val result: NaverAdResult = keywordRankingService.getNaverAdData(keywordList, isFirst)
 
