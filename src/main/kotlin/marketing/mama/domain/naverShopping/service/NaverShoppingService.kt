@@ -97,7 +97,7 @@ class NaverShoppingService {
             WebDriverWait(driver, Duration.ofSeconds(20)).until {
                 (driver as JavascriptExecutor).executeScript("return document.readyState") == "complete"
             }
-            Thread.sleep(3000)
+            Thread.sleep(10000)
             // ✅ (2) 원하는 요소가 뜰 때까지 추가로 기다림
             WebDriverWait(driver, Duration.ofSeconds(10)).until(
                 ExpectedConditions.presenceOfElementLocated(
