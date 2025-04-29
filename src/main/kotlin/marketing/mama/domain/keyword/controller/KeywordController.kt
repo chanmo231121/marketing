@@ -53,7 +53,7 @@ class KeywordController(
         if (user.role.name != "ADMIN") {
             when (user.status) {
                 Status.PENDING_APPROVAL, Status.WAITING ->
-                    return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
+                    return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요! 하셨다면 대기해주세요! "))
                 Status.PENDING_REAPPROVAL ->
                     return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 기간만료! 재승인을 해주세요."))
                 else -> {

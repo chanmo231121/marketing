@@ -79,11 +79,17 @@ class User(
     @Column(nullable = false)
     var canUseRelatedSearch: Boolean = true,
 
+    @Column(nullable = false)
+    var canUseShoppingSearch: Boolean = true,
+
     @Column(name = "single_search_limit")
     var singleSearchLimit: Int? = 200,
 
     @Column(name = "ranking_search_limit")
     var rankingSearchLimit: Int? = 50,
+
+    @Column(name = "shopping_search_limit")
+    var shoppingSearchLimit: Int? = 50,  // 기본값은 100회
 
     @OneToMany(mappedBy = "user", cascade = [CascadeType.REMOVE], orphanRemoval = true)
     val refreshTokens: MutableList<RefreshToken> = mutableListOf()

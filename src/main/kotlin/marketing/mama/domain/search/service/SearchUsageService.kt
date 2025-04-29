@@ -65,25 +65,51 @@ class SearchUsageService(
         searchUsageRepository.save(usage)
     }
 
+    @Transactional
+    fun incrementShoppingSearchWithLimit() {
+        val user = getCurrentUser()
+
+        if (user.role != Role.PRO) return
+
+        val limit = user.shoppingSearchLimit ?: 100
+        val today = LocalDate.now()
+
+        val usage = searchUsageRepository.findByUserIdAndUsageDate(user.id!!, today)
+            ?: searchUsageRepository.save(SearchUsage(user = user, usageDate = today))
+
+        if (usage.shoppingSearchCount >= limit) {
+            throw IllegalStateException("⛔ 쇼핑 검색은 하루 최대 ${limit}회까지 가능합니다.")
+        }
+
+        usage.shoppingSearchCount++
+        searchUsageRepository.save(usage)
+
+        println("✅ 쇼핑 검색 카운트 완료: ${usage.shoppingSearchCount}") // 최종 카운트 찍기
+    }
+
     fun getUserSearchUsageInfo(userId: Long): SearchUsageInfoResponse {
         val user = userRepository.findByIdOrNull(userId)
             ?: throw IllegalArgumentException("유저를 찾을 수 없습니다.")
 
         val today = LocalDate.now()
         val usage = searchUsageRepository.findByUserIdAndUsageDate(userId, today)
-            ?: SearchUsage(user = user, usageDate = today, singleSearchCount = 0, rankingSearchCount = 0)
+            ?: SearchUsage(user = user, usageDate = today, singleSearchCount = 0, rankingSearchCount = 0, shoppingSearchCount = 0)
 
         val isPro = user.role == Role.PRO
         val singleLimit = if (isPro) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
         val rankingLimit = if (isPro) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
+        val shoppingLimit = if (isPro) user.shoppingSearchLimit ?: 100 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,
             singleSearchUsed = usage.singleSearchCount,
             rankingSearchLimit = rankingLimit,
             rankingSearchUsed = usage.rankingSearchCount,
-            canUseSingleSearch = isPro,
-            canUseRankingSearch = isPro
+            shoppingSearchLimit = shoppingLimit,                   // ✅ 추가
+            shoppingSearchUsed = usage.shoppingSearchCount,         // ✅ 추가
+            canUseSingleSearch = usage.singleSearchCount < singleLimit,
+            canUseRankingSearch = usage.rankingSearchCount < rankingLimit,
+            canUseShoppingSearch = usage.shoppingSearchCount < shoppingLimit // ✅ 추가
         )
     }
 
@@ -93,17 +119,23 @@ class SearchUsageService(
 
         val singleUsed = usage?.singleSearchCount ?: 0
         val rankingUsed = usage?.rankingSearchCount ?: 0
+        val shoppingUsed = usage?.shoppingSearchCount ?: 0  // ✅ 쇼핑 사용량 추가
 
-        val singleLimit = if (user.role == Role.PRO) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
-        val rankingLimit = if (user.role == Role.PRO) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
+        val isPro = user.role == Role.PRO
+        val singleLimit = if (isPro) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
+        val rankingLimit = if (isPro) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
+        val shoppingLimit = if (isPro) user.shoppingSearchLimit ?: 100 else Int.MAX_VALUE  // ✅ 쇼핑 한도 추가
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,
             singleSearchUsed = singleUsed,
             rankingSearchLimit = rankingLimit,
             rankingSearchUsed = rankingUsed,
+            shoppingSearchLimit = shoppingLimit,     // ✅ 추가
+            shoppingSearchUsed = shoppingUsed,       // ✅ 추가
             canUseSingleSearch = singleUsed < singleLimit,
-            canUseRankingSearch = rankingUsed < rankingLimit
+            canUseRankingSearch = rankingUsed < rankingLimit,
+            canUseShoppingSearch = shoppingUsed < shoppingLimit  // ✅ 추가
         )
     }
 
@@ -118,9 +150,12 @@ class SearchUsageService(
         when (type) {
             "single" -> usage.singleSearchCount = 0
             "ranking" -> usage.rankingSearchCount = 0
+            "shopping" -> usage.shoppingSearchCount = 0 // ✅ 쇼핑 검색 카운트도 초기화 추가
             else -> throw IllegalArgumentException("잘못된 타입: $type")
         }
 
         searchUsageRepository.save(usage)
     }
+
+
 }

@@ -46,7 +46,7 @@ class Keyword2Controller(
         // 사용자 상태가 PENDING_APPROVAL이면, 승인 요청 메시지를 반환함
         if (user.role.name != "ADMIN") {
             if (user.status == Status.PENDING_APPROVAL) {
-                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요!"))
+                return ResponseEntity.ok(mapOf("approvalMessage" to "⛔ 오른쪽 상단에 있는 승인요청을 해주세요! 하셨다면 대기해주세요!"))
             }
 
             if (user.status == Status.PENDING_REAPPROVAL) {

@@ -15,6 +15,7 @@ data class LoginResponse(
     val canUseSingleSearch: Boolean,
     val canUseRankingSearch: Boolean,
     val canUseKeywordMix: Boolean,
-    val canUseRelatedSearch: Boolean
+    val canUseRelatedSearch: Boolean,
+    val canUseShoppingSearch: Boolean,
 
 )

@@ -5,6 +5,10 @@ data class SearchUsageInfoResponse(
     val singleSearchUsed: Int,
     val rankingSearchLimit: Int,
     val rankingSearchUsed: Int,
+    val shoppingSearchLimit: Int,
+    val shoppingSearchUsed: Int,
     val canUseSingleSearch: Boolean,
-    val canUseRankingSearch: Boolean
+    val canUseRankingSearch: Boolean,
+    val canUseShoppingSearch: Boolean
+
 )

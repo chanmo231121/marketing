@@ -61,6 +61,12 @@ dependencies {
     implementation("com.aventrix.jnanoid:jnanoid:2.0.0")
 
     implementation("org.apache.poi:poi-ooxml:5.2.5")
+
+
+    implementation("org.springframework.boot:spring-boot-starter-websocket")
+    implementation("org.springframework.boot:spring-boot-starter-data-jpa")
+    implementation("org.springframework.boot:spring-boot-starter-security")
+
     // ✅ 테스트 전용 h2만 명시적으로 추가
     testImplementation("com.h2database:h2")
 

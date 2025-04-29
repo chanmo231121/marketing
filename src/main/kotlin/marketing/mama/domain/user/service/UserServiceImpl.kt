@@ -99,8 +99,8 @@ class UserServiceImpl(
             canUseSingleSearch = user.canUseSingleSearch,
             canUseRankingSearch = user.canUseRankingSearch,
             canUseKeywordMix = user.canUseKeywordMix,
-            canUseRelatedSearch = user.canUseRelatedSearch
-
+            canUseRelatedSearch = user.canUseRelatedSearch,
+            canUseShoppingSearch = user.canUseShoppingSearch
 
         )
     }
