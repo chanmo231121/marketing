@@ -293,6 +293,7 @@ class NaverShoppingService {
         }
     }
 
+    
     /** PC 아이템 파싱 */
     private fun parsePcItem(
         section: com.microsoft.playwright.ElementHandle,
