@@ -80,6 +80,7 @@ class NaverShoppingService {
                 "--disable-blink-features=AutomationControlled"
             )
         }
+        
         val driver = ChromeDriver(options)
         val dataList = mutableListOf<Map<String, Any>>()
 
