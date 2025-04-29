@@ -92,6 +92,7 @@ class NaverShoppingService {
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
+            (driver as JavascriptExecutor).executeScript("Object.defineProperty(navigator, 'webdriver', {get: () => undefined})")
 
             // ✅ (1) 페이지 완전히 로드될 때까지 기다림
             WebDriverWait(driver, Duration.ofSeconds(20)).until {
