@@ -77,8 +77,13 @@ class NaverShoppingService {
                 "--incognito",
                 "--headless",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled"
+                "--disable-blink-features=AutomationControlled",
+                "--disable-gpu",
+                "--disable-extensions",
+                "--disable-dev-shm-usage",
+                "--disable-software-rasterizer",
+                "--mute-audio",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"
             )
         }
         val driver = ChromeDriver(options)
@@ -92,7 +97,7 @@ class NaverShoppingService {
             WebDriverWait(driver, Duration.ofSeconds(20)).until {
                 (driver as JavascriptExecutor).executeScript("return document.readyState") == "complete"
             }
-
+            Thread.sleep(3000)
             // ✅ (2) 원하는 요소가 뜰 때까지 추가로 기다림
             WebDriverWait(driver, Duration.ofSeconds(10)).until(
                 ExpectedConditions.presenceOfElementLocated(
