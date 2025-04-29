@@ -46,6 +46,7 @@ class NaverShoppingService {
         try {
             val url = "https://msearch.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
+
             WebDriverWait(driver, Duration.ofSeconds(10))
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("a.product_btn_link__AhZaM")))
             scrollToBottom(driver)
@@ -86,16 +87,26 @@ class NaverShoppingService {
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-            WebDriverWait(driver, Duration.ofSeconds(10))
-                .until(
-                    ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
-                    )
+
+            // ✅ (1) 페이지 완전히 로드될 때까지 기다림
+            WebDriverWait(driver, Duration.ofSeconds(20)).until {
+                (driver as JavascriptExecutor).executeScript("return document.readyState") == "complete"
+            }
+
+            // ✅ (2) 원하는 요소가 뜰 때까지 추가로 기다림
+            WebDriverWait(driver, Duration.ofSeconds(10)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
                 )
+            )
+
+            // ✅ (3) 스크롤 다운 반복
             repeat(6) {
                 (driver as JavascriptExecutor).executeScript("window.scrollTo(0, document.body.scrollHeight);")
                 Thread.sleep(1500)
             }
+
+            // ✅ (4) 데이터 추출
             val sections = driver.findElements(
                 By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
             )
