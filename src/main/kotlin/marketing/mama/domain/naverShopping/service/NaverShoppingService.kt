@@ -117,7 +117,7 @@ class NaverShoppingService {
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-            Thread.sleep(7000)
+            println(driver.pageSource)
             WebDriverWait(driver, Duration.ofSeconds(15))
                 .until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
