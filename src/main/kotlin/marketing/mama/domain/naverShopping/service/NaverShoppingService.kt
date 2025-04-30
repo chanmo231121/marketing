@@ -99,7 +99,7 @@ class NaverShoppingService {
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                //"--headless=new",
+                "--headless=new",
                 "--window-size=1920,1080",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
@@ -117,7 +117,7 @@ class NaverShoppingService {
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-
+            Thread.sleep(7000)
             WebDriverWait(driver, Duration.ofSeconds(15))
                 .until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
