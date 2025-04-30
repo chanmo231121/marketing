@@ -94,18 +94,14 @@ class NaverShoppingService {
     private suspend fun crawlPcShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
-            // ✨ 이렇게 할당이 아니라 메서드 호출
             setPageLoadStrategy(PageLoadStrategy.EAGER)
-
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                "--headless=new",
+                "--headless",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/91.0.4472.124 Safari/537.36",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
                 "--blink-settings=imagesEnabled=false",
                 "--disable-extensions",
