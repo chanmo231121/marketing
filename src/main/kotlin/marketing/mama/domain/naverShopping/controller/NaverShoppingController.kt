@@ -3,13 +3,13 @@ package marketing.mama.domain.naverShopping.controller
 import io.swagger.v3.oas.annotations.Operation
 import marketing.mama.domain.activitylog.model.ActionType
 import marketing.mama.domain.activitylog.service.SearchLogService
-
 import marketing.mama.domain.naverShopping.service.NaverShoppingService
 import marketing.mama.domain.search.service.SearchUsageService
 import marketing.mama.domain.user.model.Status
 import marketing.mama.domain.user.repository.UserRepository
 import marketing.mama.domain.user.service.UserService
 import marketing.mama.infra.security.UserPrincipal
+import kotlinx.coroutines.runBlocking
 import org.springframework.http.ResponseEntity
 import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
@@ -57,21 +57,20 @@ class NaverShoppingController(
             }
         }
 
+        // 3) 로그 기록 및 사용량 체크
         searchLogService.logSearch(
-            user = user,
-            userName = user.name,
-            ip = user.ipAddress,
-            keyword = keyword,
-            type = ActionType.쇼핑검색,    // ✅ 쇼핑검색 enum
-            uuid = user.deviceId
+            user       = user,
+            userName   = user.name,
+            ip         = user.ipAddress,
+            keyword    = keyword,
+            type       = ActionType.쇼핑검색,
+            uuid       = user.deviceId
         )
-
-
         searchUsageService.incrementShoppingSearchWithLimit()
 
-        // 3) 실제 크롤링 수행 및 응답
+        // 4) 코루틴 병렬처리된 서비스 호출
         return try {
-            val results = naverShoppingService.crawlAll(keyword)
+            val results = runBlocking { naverShoppingService.crawlAll(keyword) }
             ResponseEntity.ok(results)
         } catch (e: Exception) {
             ResponseEntity.internalServerError()

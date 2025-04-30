@@ -1,10 +1,11 @@
 package marketing.mama.domain.naverShopping.service
 
 import io.github.bonigarcia.wdm.WebDriverManager
-import org.openqa.selenium.By
-import org.openqa.selenium.JavascriptExecutor
-import org.openqa.selenium.WebDriver
-import org.openqa.selenium.WebElement
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.withContext
+import org.openqa.selenium.*
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
 import org.openqa.selenium.support.ui.ExpectedConditions
@@ -18,18 +19,23 @@ import java.time.format.DateTimeFormatter
 class NaverShoppingService {
 
     /**
-     * 모바일 + PC 크롤링 통합
+     * 모바일 + PC 크롤링 통합 (병렬 처리)
      */
-    fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> {
-        val mobile = crawlMobileShopping(keyword)
-        val pc = crawlPcShopping(keyword)
-        return mapOf("mobile" to mobile, "pc" to pc)
+    suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = coroutineScope {
+        val mobileDeferred = async(Dispatchers.IO) { crawlMobileShopping(keyword) }
+        val pcDeferred     = async(Dispatchers.IO) { crawlPcShopping(keyword) }
+        mapOf(
+            "mobile" to mobileDeferred.await(),
+            "pc"     to pcDeferred.await()
+        )
     }
 
     /** 모바일 크롤링 */
-    fun crawlMobileShopping(keyword: String): List<Map<String, Any>> {
+    private suspend fun crawlMobileShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
+            // 페이지 로딩 전략 변경
+            PageLoadStrategy.EAGER
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -37,9 +43,14 @@ class NaverShoppingService {
                 "--headless=new",
                 "--window-size=1920,1080",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled"
+                "--disable-blink-features=AutomationControlled",
+                "--blink-settings=imagesEnabled=false",
+                "--disable-extensions",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+                "--disable-fonts",
+                "--disable-notifications"
             )
-            
         }
         val driver = ChromeDriver(options)
         val resultList = mutableListOf<Map<String, Any>>()
@@ -47,9 +58,16 @@ class NaverShoppingService {
         try {
             val url = "https://msearch.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-            WebDriverWait(driver, Duration.ofSeconds(10))
-                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("a.product_btn_link__AhZaM")))
-            scrollToBottom(driver)
+
+            // 타임아웃 5초로 단축
+            WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("a.product_btn_link__AhZaM")
+                ))
+
+            // 3회 스크롤, 각 500ms 대기
+            limitedScroll(driver, times = 3, sleepMillis = 500)
+
             val sections = driver.findElements(
                 By.cssSelector("div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G")
             )
@@ -64,13 +82,14 @@ class NaverShoppingService {
             driver.quit()
         }
 
-        return resultList
+        resultList
     }
 
     /** PC 크롤링 */
-    fun crawlPcShopping(keyword: String): List<Map<String, Any>> {
+    private suspend fun crawlPcShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
+            PageLoadStrategy.EAGER
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
@@ -78,26 +97,30 @@ class NaverShoppingService {
                 "--headless=new",
                 "--window-size=1920,1080",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled"
+                "--disable-blink-features=AutomationControlled",
+                "--blink-settings=imagesEnabled=false",
+                "--disable-extensions",
+                "--disable-gpu",
+                "--disable-software-rasterizer",
+                "--disable-fonts",
+                "--disable-notifications"
             )
         }
-
         val driver = ChromeDriver(options)
         val dataList = mutableListOf<Map<String, Any>>()
 
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-            WebDriverWait(driver, Duration.ofSeconds(10))
-                .until(
-                    ExpectedConditions.presenceOfElementLocated(
-                        By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
-                    )
-                )
-            repeat(6) {
-                (driver as JavascriptExecutor).executeScript("window.scrollTo(0, document.body.scrollHeight);")
-                Thread.sleep(1500)
-            }
+
+            WebDriverWait(driver, Duration.ofSeconds(5))
+                .until(ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
+                ))
+
+            // 3회 스크롤, 각 1초 대기
+            limitedScroll(driver, times = 3, sleepMillis = 1000)
+
             val sections = driver.findElements(
                 By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
             )
@@ -111,33 +134,31 @@ class NaverShoppingService {
             driver.quit()
         }
 
-        return dataList
+        dataList
     }
 
-    private fun scrollToBottom(driver: WebDriver) {
-        var lastHeight = (driver as JavascriptExecutor).executeScript("return document.body.scrollHeight") as Long
-        while (true) {
-            driver.executeScript("window.scrollTo(0, document.body.scrollHeight);")
-            Thread.sleep(500)
-            val newHeight = driver.executeScript("return document.body.scrollHeight") as Long
-            if (newHeight == lastHeight) break
-            lastHeight = newHeight
+    /** 제한된 횟수로 스크롤 수행 */
+    private fun limitedScroll(driver: WebDriver, times: Int, sleepMillis: Long) {
+        repeat(times) {
+            (driver as JavascriptExecutor)
+                .executeScript("window.scrollTo(0, document.body.scrollHeight);")
+            Thread.sleep(sleepMillis)
         }
     }
 
     private fun getItemType(section: WebElement): String {
         val cls = section.getAttribute("class")
         return when {
-            "adProduct_list_item__KlavS" in cls        -> "광고"
+            "adProduct_list_item__KlavS"        in cls -> "광고"
             "superSavingProduct_list_item__P9D0G" in cls -> "슈퍼세이빙"
-            else                                        -> "기본"
+            else                                         -> "기본"
         }
     }
 
     private fun extractTextSafe(parent: WebElement, selector: String): String {
         return try {
             parent.findElement(By.cssSelector(selector)).text.trim()
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             ""
         }
     }
@@ -321,7 +342,7 @@ class NaverShoppingService {
                 section.findElements(By.cssSelector("span.superSavingProduct_etc___cO6c")).forEach {
                     val text = it.text.trim()
                     if ("등록일" in text) regDate = text.replace("등록일", "").trim()
-                    if ("찜" in text) zzim = it.findElements(By.cssSelector("span.superSavingProduct_num__cFGGK"))
+                    if ("찜"     in text) zzim     = it.findElements(By.cssSelector("span.superSavingProduct_num__cFGGK"))
                         .firstOrNull()?.text?.trim() ?: ""
                 }
             } else {
@@ -347,7 +368,7 @@ class NaverShoppingService {
                 section.findElements(By.cssSelector("span.product_etc__Z7jnS")).forEach {
                     val text = it.text.trim()
                     if ("등록일" in text) regDate = text.replace("등록일", "").trim()
-                    if ("찜" in text) zzim = it.findElements(By.cssSelector("span.product_num__WuH26"))
+                    if ("찜"     in text) zzim     = it.findElements(By.cssSelector("span.product_num__WuH26"))
                         .firstOrNull()?.text?.trim() ?: ""
                 }
             }

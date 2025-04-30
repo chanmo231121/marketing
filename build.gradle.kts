@@ -67,7 +67,6 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-data-jpa")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("com.microsoft.playwright:playwright:1.50.0")
-
     // ✅ 테스트 전용 h2만 명시적으로 추가
     testImplementation("com.h2database:h2")
 
@@ -103,4 +102,12 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<Test> {
     useJUnitPlatform()
+}
+
+tasks.register<JavaExec>("installPlaywrightBrowsers") {
+    group = "playwright"
+    description = "Install browsers for Playwright Java"
+    mainClass.set("com.microsoft.playwright.CLI")
+    classpath = sourceSets["main"].runtimeClasspath
+    args = listOf("install")
 }

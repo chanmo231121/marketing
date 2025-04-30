@@ -1,5 +1,6 @@
 package marketing.mama.domain.search.controller
 
+import kotlinx.coroutines.runBlocking
 import marketing.mama.domain.keyword.service.KeywordService
 import marketing.mama.domain.keywordRanking.service.KeywordRankingService
 import marketing.mama.domain.naverShopping.service.NaverShoppingService
@@ -55,10 +56,18 @@ class SearchUsageController(
 
 
     @GetMapping("/shopping")
-    fun shoppingSearch(@RequestParam keyword: String): ResponseEntity<Any> {
+    fun shoppingSearch(
+        @RequestParam keyword: String
+    ): ResponseEntity<Any> {
         return try {
-            searchUsageService.incrementShoppingSearchWithLimit() // ✅ 쇼핑 검색량 올리기
-            val result = naverShoppingService.crawlAll(keyword)
+            // 1) 사용량 체크
+            searchUsageService.incrementShoppingSearchWithLimit()
+
+            // 2) suspend fun 호출을 runBlocking으로 감싸기
+            val result = runBlocking {
+                naverShoppingService.crawlAll(keyword)
+            }
+
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {
             ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
