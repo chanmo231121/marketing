@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service
 import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import org.openqa.selenium.PageLoadStrategy
 
 @Service
 class NaverShoppingService {
@@ -34,15 +35,18 @@ class NaverShoppingService {
     private suspend fun crawlMobileShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
-            // 페이지 로딩 전략 변경
-            PageLoadStrategy.EAGER
+            // ✨ 이렇게 할당이 아니라 메서드 호출
+            setPageLoadStrategy(PageLoadStrategy.EAGER)
+
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
                 "--headless=new",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
                 "--blink-settings=imagesEnabled=false",
                 "--disable-extensions",
@@ -52,6 +56,7 @@ class NaverShoppingService {
                 "--disable-notifications"
             )
         }
+
         val driver = ChromeDriver(options)
         val resultList = mutableListOf<Map<String, Any>>()
 
@@ -89,14 +94,18 @@ class NaverShoppingService {
     private suspend fun crawlPcShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
-            PageLoadStrategy.EAGER
+            // ✨ 이렇게 할당이 아니라 메서드 호출
+            setPageLoadStrategy(PageLoadStrategy.EAGER)
+
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                "--headless",
+                "--headless=new",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
                 "--blink-settings=imagesEnabled=false",
                 "--disable-extensions",
