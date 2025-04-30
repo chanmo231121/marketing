@@ -15,6 +15,7 @@ import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import org.openqa.selenium.PageLoadStrategy
+import java.net.URLEncoder
 
 @Service
 class NaverShoppingService {
@@ -94,36 +95,46 @@ class NaverShoppingService {
     private suspend fun crawlPcShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
-            setPageLoadStrategy(PageLoadStrategy.EAGER)
+            setExperimentalOption("excludeSwitches", listOf("enable-automation"))
+            setExperimentalOption("useAutomationExtension", false)
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                "--headless=new",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
-                "--blink-settings=imagesEnabled=false",
-                "--disable-extensions",
                 "--disable-gpu",
-                "--disable-software-rasterizer",
-                "--disable-fonts",
-                "--disable-notifications"
+                "--disable-notifications",
+                "--headless=new",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.0.0 Safari/537.36"
             )
         }
+
         val driver = ChromeDriver(options)
+
+        // 🛡️ 네이버 탐지 우회용 JavaScript 삽입
+        val cdpParams = mapOf(
+            "source" to """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3] });
+        """.trimIndent()
+        )
+        (driver as ChromeDriver).executeCdpCommand("Page.addScriptToEvaluateOnNewDocument", cdpParams)
+
         val dataList = mutableListOf<Map<String, Any>>()
 
         try {
-            val url = "https://search.shopping.naver.com/search/all?query=$keyword"
+            val url = "https://search.shopping.naver.com/search/all?query=${URLEncoder.encode(keyword, "UTF-8")}"
             driver.get(url)
-            println(driver.pageSource)
-            WebDriverWait(driver, Duration.ofSeconds(15))
-                .until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
-                ))
 
-            // 3회 스크롤, 각 1초 대기
+            WebDriverWait(driver, Duration.ofSeconds(15)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                    By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
+                )
+            )
+
             limitedScroll(driver, times = 3, sleepMillis = 1000)
 
             val sections = driver.findElements(
@@ -133,6 +144,7 @@ class NaverShoppingService {
             for (section in sections) {
                 parsePcItem(section, keyword, rank++)?.let { dataList.add(it) }
             }
+
         } catch (e: Exception) {
             e.printStackTrace()
         } finally {
