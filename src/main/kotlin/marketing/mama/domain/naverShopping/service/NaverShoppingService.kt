@@ -36,7 +36,15 @@ class NaverShoppingService {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
             // ✨ 이렇게 할당이 아니라 메서드 호출
+
             setPageLoadStrategy(PageLoadStrategy.EAGER)
+            val proxyIp = "123.214.67.61"
+            val proxyPort = 8899
+            val proxySetting = Proxy().apply {
+                httpProxy = "$proxyIp:$proxyPort"
+                sslProxy = "$proxyIp:$proxyPort"
+            }
+            setProxy(proxySetting)
 
             addArguments(
                 "--no-sandbox",
@@ -95,6 +103,15 @@ class NaverShoppingService {
         WebDriverManager.chromedriver().setup()
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
+
+            val proxyIp = "123.214.67.61"
+            val proxyPort = 8899
+            val proxySetting = Proxy().apply {
+                httpProxy = "$proxyIp:$proxyPort"
+                sslProxy = "$proxyIp:$proxyPort"
+            }
+            setProxy(proxySetting)
+
             addArguments(
                 "--no-sandbox",
                 "--lang=ko-KR",
