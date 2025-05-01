@@ -56,12 +56,13 @@ class NaverShoppingService {
                         "AppleWebKit/537.36 (KHTML, like Gecko) " +
                         "Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
-                "--blink-settings=imagesEnabled=false",
                 "--disable-extensions",
                 "--disable-gpu",
                 "--disable-software-rasterizer",
                 "--disable-fonts",
-                "--disable-notifications"
+                "--disable-notifications",
+                "--disable-images",
+                "--disable-javascript",
             )
         }
 
@@ -73,13 +74,13 @@ class NaverShoppingService {
             driver.get(url)
 
             // 타임아웃 5초로 단축
-            WebDriverWait(driver, Duration.ofSeconds(5))
+            WebDriverWait(driver, Duration.ofSeconds(3))
                 .until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("a.product_btn_link__AhZaM")
                 ))
 
             // 3회 스크롤, 각 500ms 대기
-            limitedScroll(driver, times = 3, sleepMillis = 500)
+            limitedScroll(driver, times = 3, sleepMillis = 300)
 
             val sections = driver.findElements(
                 By.cssSelector("div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G")
@@ -121,12 +122,13 @@ class NaverShoppingService {
                 "--window-size=1920,1080",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled",
-                "--blink-settings=imagesEnabled=false",
                 "--disable-extensions",
                 "--disable-gpu",
                 "--disable-software-rasterizer",
                 "--disable-fonts",
-                "--disable-notifications"
+                "--disable-notifications",
+                "--disable-images",
+                "--disable-javascript",
             )
         }
         val driver = ChromeDriver(options)
@@ -141,15 +143,13 @@ class NaverShoppingService {
         try {
             val url = "https://search.shopping.naver.com/search/all?query=$keyword"
             driver.get(url)
-            val html = driver.pageSource
-            println("[DEBUG] HTML snapshot:\\n$html")
-            WebDriverWait(driver, Duration.ofSeconds(10))
+            WebDriverWait(driver, Duration.ofSeconds(3))
                 .until(ExpectedConditions.presenceOfElementLocated(
                     By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
                 ))
 
             // 3회 스크롤, 각 1초 대기
-            limitedScroll(driver, times = 3, sleepMillis = 1000)
+            limitedScroll(driver, times = 3, sleepMillis = 300)
 
             val sections = driver.findElements(
                 By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
