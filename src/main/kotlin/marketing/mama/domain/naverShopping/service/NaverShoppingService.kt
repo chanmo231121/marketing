@@ -43,7 +43,7 @@ class NaverShoppingService {
         for (page in 1..3) {
             val doc: Document = Jsoup.connect("$base&pagingIndex=$page")
                 .userAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 13_2_3 like Mac OS X)")
-                .timeout(30000)
+                .timeout(10000)
                 .get()
 
             // 화면 노출 순서대로 한 번에 선택
@@ -64,7 +64,7 @@ class NaverShoppingService {
         WebDriverManager.chromedriver().setup()
         val proxy = Proxy().apply {
             httpProxy = "123.214.67.61:8899"
-            sslProxy  = "123.214.67.61:8899"
+            sslProxy = "123.214.67.61:8899"
         }
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.NONE)
@@ -75,40 +75,32 @@ class NaverShoppingService {
             )
         }
         val driver: WebDriver = ChromeDriver(options)
-        (driver as JavascriptExecutor)
-            .executeScript("Object.defineProperty(navigator, 'webdriver', {get:() => undefined});")
+        (driver as JavascriptExecutor).executeScript("Object.defineProperty(navigator, 'webdriver', {get:() => undefined});")
 
         val results = mutableListOf<Map<String, Any>>()
-        val fmt     = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+        val fmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
         try {
             driver.get("https://search.shopping.naver.com/search/all?query=$keyword")
-            WebDriverWait(driver, Duration.ofSeconds(30))
-                .until(
-                    ExpectedConditions.presenceOfElementLocated(
-                        org.openqa.selenium.By.cssSelector(
-                            "div.adProduct_item__T7utB," +
-                                    "div.product_item__KQayS," +
-                                    "div.superSavingProduct_item__6mR7_"
-                        )
+            WebDriverWait(driver, Duration.ofSeconds(30)).until(
+                ExpectedConditions.presenceOfElementLocated(
+                    org.openqa.selenium.By.cssSelector(
+                        "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_"
                     )
                 )
-            // 스크롤 내려서 로드
+            )
             repeat(3) {
                 driver.executeScript("window.scrollTo(0, document.body.scrollHeight);")
                 Thread.sleep(300)
             }
             val doc: Document = Jsoup.parse(driver.pageSource)
             var rank = 1
-
-            // 화면 노출 순서대로 한 번에 선택
-            val items = doc.select(
-                "div.adProduct_item__T7utB," +
-                        "div.product_item__KQayS," +
-                        "div.superSavingProduct_item__6mR7_"
-            )
+            val items = doc.select("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
             items.forEach { el ->
                 parsePcElement(el, keyword, rank++, fmt)?.let { results.add(it) }
             }
+        } catch (e: Exception) {
+            println("❗PC 크롤링 중 에러 발생: ${e.message}")
+            e.printStackTrace()
         } finally {
             driver.quit()
         }
