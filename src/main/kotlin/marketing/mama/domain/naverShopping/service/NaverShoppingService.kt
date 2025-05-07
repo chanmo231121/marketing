@@ -79,6 +79,7 @@ class NaverShoppingService {
         results
     }
 
+
     private fun createDriver(isMobile: Boolean): WebDriver {
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
