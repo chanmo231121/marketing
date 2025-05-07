@@ -19,39 +19,81 @@ import org.openqa.selenium.PageLoadStrategy
 @Service
 class NaverShoppingService {
 
+    data class CrawlConfig(
+        val urlTemplate: String,
+        val sectionSelector: String,
+        val parseItem: (WebElement, String, Int) -> Map<String, Any>?
+    )
 
+    private val mobileConfig = CrawlConfig(
+        urlTemplate = "https://msearch.shopping.naver.com/search/all?query=%s",
+        sectionSelector = "div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G",
+        parseItem = { section, keyword, rank -> parseMobileItem(section, keyword, rank, getItemType(section)) }
+    )
 
+    private val pcConfig = CrawlConfig(
+        urlTemplate = "https://search.shopping.naver.com/search/all?query=%s",
+        sectionSelector = "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_",
+        parseItem = ::parsePcItem
+    )
 
     suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = coroutineScope {
-        val mobileDeferred = async(Dispatchers.IO) { crawlMobileShopping(keyword) }
-        val pcDeferred     = async(Dispatchers.IO) { crawlPcShopping(keyword) }
+        val mobileDeferred = async(Dispatchers.IO) { crawlByConfig(keyword, mobileConfig, true) }
+        val pcDeferred     = async(Dispatchers.IO) { crawlByConfig(keyword, pcConfig, false) }
         mapOf(
             "mobile" to mobileDeferred.await(),
             "pc"     to pcDeferred.await()
         )
     }
 
-
-
-    private suspend fun crawlMobileShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
+    private suspend fun crawlByConfig(
+        keyword: String,
+        config: CrawlConfig,
+        isMobile: Boolean
+    ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
-        val options = ChromeOptions().apply {
-            // ✨ 이렇게 할당이 아니라 메서드 호출
+        val driver = createDriver(isMobile)
+        val results = mutableListOf<Map<String, Any>>()
+        try {
+            val url = config.urlTemplate.format(keyword)
+            driver.get(url)
 
+            WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(config.sectionSelector)))
+
+            limitedScroll(driver, times = 3, sleepMillis = if (isMobile) 300 else 300)
+
+            val sections = driver.findElements(By.cssSelector(config.sectionSelector))
+            var rank = 1
+            for (section in sections) {
+                config.parseItem(section, keyword, rank)?.let {
+                    results.add(it)
+                }
+                rank++
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            driver.quit()
+        }
+        results
+    }
+
+    private fun createDriver(isMobile: Boolean): WebDriver {
+        val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
+            // 공통 Proxy 설정
             val proxyIp = "123.214.67.61"
             val proxyPort = 8899
-            val proxySetting = Proxy().apply {
+            setProxy(Proxy().apply {
                 httpProxy = "$proxyIp:$proxyPort"
-                sslProxy = "$proxyIp:$proxyPort"
-            }
-            setProxy(proxySetting)
-
+                sslProxy  = "$proxyIp:$proxyPort"
+            })
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                "--headless=new",
+                if (isMobile) "--headless=new" else "--headless=chrome",
                 "--window-size=1920,1080",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
                         "AppleWebKit/537.36 (KHTML, like Gecko) " +
@@ -63,112 +105,26 @@ class NaverShoppingService {
                 "--disable-fonts",
                 "--disable-notifications",
                 "--disable-images",
-                "--disable-javascript",
+                "--disable-javascript"
             )
-        }
-
-        val driver = ChromeDriver(options)
-        val resultList = mutableListOf<Map<String, Any>>()
-
-        try {
-            val url = "https://msearch.shopping.naver.com/search/all?query=$keyword"
-            driver.get(url)
-
-            // 타임아웃 5초로 단축
-            WebDriverWait(driver, Duration.ofSeconds(3))
-                .until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("a.product_btn_link__AhZaM")
-                ))
-
-            // 3회 스크롤, 각 500ms 대기
-            limitedScroll(driver, times = 3, sleepMillis = 300)
-
-            val sections = driver.findElements(
-                By.cssSelector("div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G")
-            )
-            var rank = 1
-            for (section in sections) {
-                val itemType = getItemType(section)
-                parseMobileItem(section, keyword, rank++, itemType)?.let { resultList.add(it) }
+            if (!isMobile) {
+                addArguments("--lang=ko-KR")
+                // webdriver 속성 감추기
+                setExperimentalOption("excludeSwitches", listOf("enable-automation"))
+                setExperimentalOption("useAutomationExtension", false)
             }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            driver.quit()
         }
-
-        resultList
+        return ChromeDriver(options).also { driver ->
+            if (!isMobile) {
+                (driver as JavascriptExecutor).executeScript("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    window.navigator.chrome = { runtime: {} };
+                    Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                """.trimIndent())
+            }
+        }
     }
-
-
-    private suspend fun crawlPcShopping(keyword: String): List<Map<String, Any>> = withContext(Dispatchers.IO) {
-        WebDriverManager.chromedriver().setup()
-        val options = ChromeOptions().apply {
-            setPageLoadStrategy(PageLoadStrategy.EAGER)
-
-            val proxyIp = "123.214.67.61"
-            val proxyPort = 8899
-            val proxySetting = Proxy().apply {
-                httpProxy = "$proxyIp:$proxyPort"
-                sslProxy = "$proxyIp:$proxyPort"
-            }
-            setProxy(proxySetting)
-
-            addArguments(
-                "--no-sandbox",
-                "--lang=ko-KR",
-                "--disable-dev-shm-usage",
-                "--incognito",
-                "--headless=chrome",
-                "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--disable-gpu",
-                "--disable-software-rasterizer",
-                "--disable-fonts",
-                "--disable-notifications",
-                "--disable-images",
-                "--disable-javascript",
-            )
-        }
-        val driver = ChromeDriver(options)
-        (driver as JavascriptExecutor).executeScript("""
-    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-    window.navigator.chrome = { runtime: {} };
-    Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
-    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-""".trimIndent())
-        val dataList = mutableListOf<Map<String, Any>>()
-
-        try {
-            val url = "https://search.shopping.naver.com/search/all?query=$keyword"
-            driver.get(url)
-            WebDriverWait(driver, Duration.ofSeconds(3))
-                .until(ExpectedConditions.presenceOfElementLocated(
-                    By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
-                ))
-
-            // 3회 스크롤, 각 1초 대기
-            limitedScroll(driver, times = 3, sleepMillis = 300)
-
-            val sections = driver.findElements(
-                By.cssSelector("div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_")
-            )
-            var rank = 1
-            for (section in sections) {
-                parsePcItem(section, keyword, rank++)?.let { dataList.add(it) }
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            driver.quit()
-        }
-
-        dataList
-    }
-
-
 
     private fun limitedScroll(driver: WebDriver, times: Int, sleepMillis: Long) {
         repeat(times) {
@@ -181,19 +137,15 @@ class NaverShoppingService {
     private fun getItemType(section: WebElement): String {
         val cls = section.getAttribute("class")
         return when {
-            "adProduct_list_item__KlavS"        in cls -> "광고"
+            "adProduct_list_item__KlavS" in cls        -> "광고"
             "superSavingProduct_list_item__P9D0G" in cls -> "슈퍼세이빙"
             else                                         -> "기본"
         }
     }
 
-    private fun extractTextSafe(parent: WebElement, selector: String): String {
-        return try {
-            parent.findElement(By.cssSelector(selector)).text.trim()
-        } catch (_: Exception) {
-            ""
-        }
-    }
+    private fun extractTextSafe(parent: WebElement, selector: String): String =
+        try { parent.findElement(By.cssSelector(selector)).text.trim() } catch (_: Exception) { "" }
+
 
 
 
@@ -323,6 +275,8 @@ class NaverShoppingService {
         rank: Int
     ): Map<String, Any>? {
         return try {
+            val sellerElement = section.findElements(By.cssSelector("div.adProduct_mall_title__Ivl98 a")).firstOrNull()
+            val sellerText = sellerElement?.text?.trim()
             val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
             val className = section.getAttribute("class")
             val sellers = MutableList(5) { "" }
@@ -343,8 +297,11 @@ class NaverShoppingService {
                 price = section.findElement(By.cssSelector("span.price_num__Y66T7 em")).text.trim()
                 delivery = section.findElements(By.cssSelector("span.price_delivery__0jnYm"))
                     .firstOrNull()?.text?.replace("배송비", "")?.trim() ?: ""
-                sellers[0] = section.findElements(By.cssSelector("div.adProduct_mall_title__Ivl98 a"))
-                    .firstOrNull()?.text?.trim() ?: ""
+                sellers[0] = if (!sellerText.isNullOrEmpty()) {
+                    sellerText
+                } else {
+                    sellerElement?.findElement(By.cssSelector("img"))?.getAttribute("alt")?.trim() ?: ""
+                }
                 rating = section.findElements(By.cssSelector("span.adProduct_rating__vk1YN"))
                     .firstOrNull()?.text?.trim() ?: ""
                 review = section.findElements(By.cssSelector("em.adProduct_count__J5x57"))
