@@ -84,7 +84,7 @@ class NaverShoppingService {
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
             // 공통 Proxy 설정
-            val proxyIp = "123.214.67.61"
+            val proxyIp = "127.0.0.1"
             val proxyPort = 8899
             setProxy(Proxy().apply {
                 httpProxy = "$proxyIp:$proxyPort"
