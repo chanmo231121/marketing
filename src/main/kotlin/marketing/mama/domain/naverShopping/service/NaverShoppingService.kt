@@ -5,6 +5,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import org.jsoup.nodes.Element
 import org.openqa.selenium.*
 import org.openqa.selenium.chrome.ChromeDriver
 import org.openqa.selenium.chrome.ChromeOptions
@@ -22,7 +23,7 @@ class NaverShoppingService {
     data class CrawlConfig(
         val urlTemplate: String,
         val sectionSelector: String,
-        val parseItem: (WebElement, String, Int) -> Map<String, Any>?
+        val parseItem: (Element, String, Int) -> Map<String, Any>?
     )
 
     private val mobileConfig = CrawlConfig(
@@ -54,6 +55,7 @@ class NaverShoppingService {
         WebDriverManager.chromedriver().setup()
         val driver = createDriver(isMobile)
         val results = mutableListOf<Map<String, Any>>()
+
         try {
             val url = config.urlTemplate.format(keyword)
             driver.get(url)
@@ -63,7 +65,10 @@ class NaverShoppingService {
 
             limitedScroll(driver, times = 3, sleepMillis = if (isMobile) 300 else 300)
 
-            val sections = driver.findElements(By.cssSelector(config.sectionSelector))
+            val html = driver.pageSource
+            val doc = org.jsoup.Jsoup.parse(html)
+            val sections = doc.select(config.sectionSelector)
+
             var rank = 1
             for (section in sections) {
                 config.parseItem(section, keyword, rank)?.let {
@@ -76,6 +81,7 @@ class NaverShoppingService {
         } finally {
             driver.quit()
         }
+
         results
     }
 
@@ -83,47 +89,47 @@ class NaverShoppingService {
     private fun createDriver(isMobile: Boolean): WebDriver {
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
-            // 공통 Proxy 설정
+
+            // 프록시 설정
             val proxyIp = "123.214.67.61"
             val proxyPort = 8899
             setProxy(Proxy().apply {
                 httpProxy = "$proxyIp:$proxyPort"
-                sslProxy  = "$proxyIp:$proxyPort"
+                sslProxy = "$proxyIp:$proxyPort"
             })
+
+            // 공통 옵션
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                if (isMobile) "--headless=new" else "--headless=chrome",
+                "--headless=new",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled",
+                "--lang=ko-KR",
                 "--disable-extensions",
                 "--disable-gpu",
                 "--disable-software-rasterizer",
-                "--disable-fonts",
                 "--disable-notifications",
-                "--disable-images",
-                "--disable-javascript"
+                "--blink-settings=imagesEnabled=false", // 이미지 비활성화
+                "--disable-blink-features=AutomationControlled",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/113.0.0.0 Safari/537.36"
             )
-            if (!isMobile) {
-                addArguments("--lang=ko-KR")
-                // webdriver 속성 감추기
-                setExperimentalOption("excludeSwitches", listOf("enable-automation"))
-                setExperimentalOption("useAutomationExtension", false)
-            }
+
+            setExperimentalOption("excludeSwitches", listOf("enable-automation"))
+            setExperimentalOption("useAutomationExtension", false)
         }
+
         return ChromeDriver(options).also { driver ->
-            if (!isMobile) {
-                (driver as JavascriptExecutor).executeScript("""
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                    window.navigator.chrome = { runtime: {} };
-                    Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
-                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-                """.trimIndent())
-            }
+            (driver as JavascriptExecutor).executeScript(
+                """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        """.trimIndent()
+            )
         }
     }
 
@@ -135,8 +141,8 @@ class NaverShoppingService {
         }
     }
 
-    private fun getItemType(section: WebElement): String {
-        val cls = section.getAttribute("class")
+    private fun getItemType(section: Element): String {
+        val cls = section.className()
         return when {
             "adProduct_list_item__KlavS" in cls        -> "광고"
             "superSavingProduct_list_item__P9D0G" in cls -> "슈퍼세이빙"
@@ -144,14 +150,15 @@ class NaverShoppingService {
         }
     }
 
-    private fun extractTextSafe(parent: WebElement, selector: String): String =
-        try { parent.findElement(By.cssSelector(selector)).text.trim() } catch (_: Exception) { "" }
+    private fun extractTextSafe(parent: Element, selector: String): String =
+        try { parent.selectFirst(selector)?.text()?.trim() ?: "" } catch (_: Exception) { "" }
+
 
 
 
 
     private fun parseMobileItem(
-        section: WebElement,
+        section: Element,
         keyword: String,
         rank: Int,
         itemType: String
@@ -169,6 +176,7 @@ class NaverShoppingService {
                     else    -> "span.product_info_tit__UOCqq"
                 }
             )
+
             val price = extractTextSafe(
                 section,
                 when {
@@ -177,6 +185,7 @@ class NaverShoppingService {
                     else    -> "span.product_num__dWkfq strong"
                 }
             )
+
             val delivery = extractTextSafe(
                 section,
                 when {
@@ -190,12 +199,7 @@ class NaverShoppingService {
                 isSuper -> extractTextSafe(section, "span.superSavingProduct_mall__A_QU_")
                 isAd    -> extractTextSafe(section, "div.adProduct_link_mall__C7WE_ span.adProduct_mall__UMb11")
                 else    -> {
-                    val rawCount = try {
-                        section.findElement(By.cssSelector("div.product_seller__YUmkW")).text
-                            .replace("판매처", "").trim()
-                    } catch (e: Exception) {
-                        ""
-                    }
+                    val rawCount = section.select("div.product_seller__YUmkW").text().replace("판매처", "").trim()
                     val digits = rawCount.filter { it.isDigit() }
                     if (digits.isNotEmpty()) digits
                     else extractTextSafe(section, "div.product_link_mall___Dpmp span.product_mall__gUvbk")
@@ -220,14 +224,9 @@ class NaverShoppingService {
                     section,
                     "div.superSavingProduct_info_count__0j84V span:nth-of-type(2) em"
                 )
-                else    -> {
-                    try {
-                        section.findElements(By.cssSelector("div.product_info_count__J6ElA span"))
-                            .firstOrNull { it.text.contains("구매") }
-                            ?.findElement(By.tagName("em"))?.text ?: ""
-                    } catch (_: Exception) {
-                        ""
-                    }
+                else -> {
+                    section.select("div.product_info_count__J6ElA span").firstOrNull { it.text().contains("구매") }
+                        ?.selectFirst("em")?.text()?.trim() ?: ""
                 }
             }
 
@@ -238,13 +237,8 @@ class NaverShoppingService {
                 )
                 isAd    -> extractTextSafe(section, "span.adProduct_favorite__V_vhh").replace("찜", "").trim()
                 else    -> {
-                    try {
-                        section.findElements(By.cssSelector("div.product_info_count__J6ElA span"))
-                            .firstOrNull { it.text.contains("찜") }
-                            ?.findElement(By.tagName("em"))?.text ?: ""
-                    } catch (_: Exception) {
-                        ""
-                    }
+                    section.select("div.product_info_count__J6ElA span").firstOrNull { it.text().contains("찜") }
+                        ?.selectFirst("em")?.text()?.trim() ?: ""
                 }
             }
 
@@ -261,7 +255,7 @@ class NaverShoppingService {
                 "평점"       to rating,
                 "리뷰수"     to review,
                 "구매수"     to purchase,
-                "찜"        to favorite
+                "찜"         to favorite
             )
         } catch (e: Exception) {
             null
@@ -269,17 +263,14 @@ class NaverShoppingService {
     }
 
 
-
     private fun parsePcItem(
-        section: WebElement,
+        section: Element,
         keyword: String,
         rank: Int
     ): Map<String, Any>? {
         return try {
-            val sellerElement = section.findElements(By.cssSelector("div.adProduct_mall_title__Ivl98 a")).firstOrNull()
-            val sellerText = sellerElement?.text?.trim()
             val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            val className = section.getAttribute("class")
+            val className = section.className()
             val sellers = MutableList(5) { "" }
             val adLabel: String
             lateinit var title: String
@@ -293,81 +284,93 @@ class NaverShoppingService {
 
             if ("adProduct_item__T7utB" in className) {
                 adLabel = "광고"
-                title = section.findElement(By.cssSelector("div.adProduct_title__fsQU6 a"))
-                    .getAttribute("title").trim()
-                price = section.findElement(By.cssSelector("span.price_num__Y66T7 em")).text.trim()
-                delivery = section.findElements(By.cssSelector("span.price_delivery__0jnYm"))
-                    .firstOrNull()?.text?.replace("배송비", "")?.trim() ?: ""
+                title = section.selectFirst("div.adProduct_title__fsQU6 a")?.attr("title")?.trim() ?: ""
+                price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
+                delivery = section.select("span.price_delivery__0jnYm")
+                    .firstOrNull()?.text()?.replace("배송비", "")?.trim() ?: ""
+
+                val sellerElement = section.selectFirst("div.adProduct_mall_title__Ivl98 a")
+                val sellerText = sellerElement?.text()?.trim()
                 sellers[0] = if (!sellerText.isNullOrEmpty()) {
                     sellerText
                 } else {
-                    sellerElement?.findElement(By.cssSelector("img"))?.getAttribute("alt")?.trim() ?: ""
+                    sellerElement?.selectFirst("img")?.attr("alt")?.trim() ?: ""
                 }
-                rating = section.findElements(By.cssSelector("span.adProduct_rating__vk1YN"))
-                    .firstOrNull()?.text?.trim() ?: ""
-                review = section.findElements(By.cssSelector("em.adProduct_count__J5x57"))
-                    .firstOrNull()?.text?.trim() ?: ""
-                regDate = section.findElements(By.cssSelector("span.adProduct_etc__AM_WB"))
-                    .firstOrNull { it.text.contains("등록일") }
-                    ?.text?.replace("등록일", "")?.trim() ?: ""
-                zzim = section.findElements(By.cssSelector("span.adProduct_num__2Sl5g"))
-                    .firstOrNull()?.text?.trim() ?: ""
+
+                rating = section.selectFirst("span.adProduct_rating__vk1YN")?.text()?.trim() ?: ""
+                review = section.selectFirst("em.adProduct_count__J5x57")?.text()?.trim() ?: ""
+                regDate = section.select("span.adProduct_etc__AM_WB")
+                    .firstOrNull { it.text().contains("등록일") }
+                    ?.text()?.replace("등록일", "")?.trim() ?: ""
+                zzim = section.selectFirst("span.adProduct_num__2Sl5g")?.text()?.trim() ?: ""
                 purchase = ""
+
             } else if ("superSavingProduct_item__6mR7_" in className) {
                 adLabel = "슈퍼세이빙"
-                title = section.findElement(By.cssSelector("div.superSavingProduct_title__WwZ_b a"))
-                    .getAttribute("title").trim()
-                price = section.findElement(By.cssSelector("span.price_num__Y66T7 em")).text.trim()
-                delivery = section.findElements(By.cssSelector("span.price_delivery__0jnYm"))
-                    .firstOrNull()?.text?.replace("배송비", "")?.trim() ?: ""
-                sellers[0] = section.findElements(By.cssSelector("div.superSavingProduct_mall_title__HQ6yD a"))
-                    .firstOrNull()?.text?.trim() ?: ""
-                rating = section.findElements(By.cssSelector("span.superSavingProduct_grade__wRr4y"))
-                    .firstOrNull()?.text?.replace("별점", "")?.trim() ?: ""
-                section.findElements(By.cssSelector("em.superSavingProduct_num__cFGGK")).forEach {
-                    if (it.text.startsWith("(") && it.text.endsWith(")")) {
-                        review = it.text.removeSurrounding("(", ")")
+                title = section.selectFirst("div.superSavingProduct_title__WwZ_b a")?.attr("title")?.trim() ?: ""
+                price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
+                delivery = section.select("span.price_delivery__0jnYm")
+                    .firstOrNull()?.text()?.replace("배송비", "")?.trim() ?: ""
+                sellers[0] = section.selectFirst("div.superSavingProduct_mall_title__HQ6yD a")?.text()?.trim() ?: ""
+                rating = section.selectFirst("span.superSavingProduct_grade__wRr4y")
+                    ?.text()?.replace("별점", "")?.trim() ?: ""
+
+                section.select("em.superSavingProduct_num__cFGGK").forEach {
+                    if (it.text().startsWith("(") && it.text().endsWith(")")) {
+                        review = it.text().removeSurrounding("(", ")")
                     }
                 }
-                purchase = section.findElements(By.cssSelector("span span em.superSavingProduct_num__cFGGK"))
-                    .firstOrNull()?.text?.trim() ?: ""
-                section.findElements(By.cssSelector("span.superSavingProduct_etc___cO6c")).forEach {
-                    val text = it.text.trim()
+
+                purchase = section.select("span span em.superSavingProduct_num__cFGGK")
+                    .firstOrNull()?.text()?.trim() ?: ""
+
+                section.select("span.superSavingProduct_etc___cO6c").forEach {
+                    val text = it.text().trim()
                     if ("등록일" in text) regDate = text.replace("등록일", "").trim()
-                    if ("찜"     in text) zzim     = it.findElements(By.cssSelector("span.superSavingProduct_num__cFGGK"))
-                        .firstOrNull()?.text?.trim() ?: ""
+                    if ("찜" in text) zzim = it.selectFirst("span.superSavingProduct_num__cFGGK")
+                        ?.text()?.trim() ?: ""
                 }
+
             } else {
                 adLabel = "기본"
-                title = section.findElement(By.cssSelector("a.product_link__aFnaq"))
-                    .getAttribute("title").trim()
-                price = section.findElement(By.cssSelector("span.price_num__Y66T7 em")).text.trim()
-                delivery = section.findElements(By.cssSelector("span.price_delivery__0jnYm"))
-                    .firstOrNull()?.text?.replace("배송비", "")?.trim() ?: ""
-                section.findElements(By.cssSelector("ul.product_mall_list__rYuBz a"))
-                    .forEachIndexed { idx, elem ->
-                        if (idx < 5) sellers[idx] = elem.getAttribute("title").trim()
-                    }
+                title = section.selectFirst("a.product_link__aFnaq")?.attr("title")?.trim() ?: ""
+                price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
+                delivery = section.select("span.price_delivery__0jnYm")
+                    .firstOrNull()?.text()?.replace("배송비", "")?.trim() ?: ""
+
+                section.select("ul.product_mall_list__rYuBz a").forEachIndexed { idx, elem ->
+                    if (idx < 5) sellers[idx] = elem.attr("title").trim()
+                }
+
                 if (sellers[0].isEmpty()) {
-                    // 텍스트가 없을 경우, 이미지 alt 속성에서 가져오기 (ex: 쿠팡)
-                    sellers[0] = try {
-                        section.findElement(By.cssSelector("a.product_mall__0cRyd img"))
-                            .getAttribute("alt")?.trim().orEmpty()
-                    } catch (_: Exception) {
-                        extractTextSafe(section, "a.product_mall__0cRyd")
+                    // 1순위: 텍스트 직접 가져오기
+                    val sellerTag = section.selectFirst("a.product_mall__0cRyd")
+                    val sellerText = sellerTag?.text()?.trim().orEmpty()
+
+                    sellers[0] = when {
+                        sellerText.isNotEmpty() -> sellerText
+                        else -> {
+                            // 2순위: 이미지 alt 대체
+                            sellerTag?.selectFirst("img")?.attr("alt")?.trim().orEmpty()
+                        }
                     }
                 }
-                rating = section.findElements(By.cssSelector("span.product_grade__O_5f5"))
-                    .firstOrNull()?.text?.replace("별점", "")?.trim() ?: ""
-                review = section.findElements(By.xpath(".//span[@class='blind' and text()='리뷰']/following-sibling::em[@class='product_num__WuH26']"))
-                    .firstOrNull()?.text?.replace("(", "")?.replace(")", "")?.replace(",", "") ?: ""
-                purchase = section.findElements(By.xpath(".//span[contains(text(),'구매')]/em[@class='product_num__WuH26']"))
-                    .firstOrNull()?.text?.replace(",", "")?.trim() ?: ""
-                section.findElements(By.cssSelector("span.product_etc__Z7jnS")).forEach {
-                    val text = it.text.trim()
+
+                rating = section.selectFirst("span.product_grade__O_5f5")
+                    ?.text()?.replace("별점", "")?.trim() ?: ""
+
+                review = section.select("span.blind")
+                    .firstOrNull { it.text() == "리뷰" }
+                    ?.nextElementSibling()?.text()?.replace("(", "")?.replace(")", "")?.replace(",", "") ?: ""
+
+                purchase = section.select("span").firstOrNull { it.text().contains("구매") }
+                    ?.selectFirst("em.product_num__WuH26")?.text()?.replace(",", "")?.trim() ?: ""
+
+                section.select("span.product_etc__Z7jnS").forEach {
+                    val text = it.text().trim()
                     if ("등록일" in text) regDate = text.replace("등록일", "").trim()
-                    if ("찜"     in text) zzim     = it.findElements(By.cssSelector("span.product_num__WuH26"))
-                        .firstOrNull()?.text?.trim() ?: ""
+                    if ("찜" in text) zzim = it.selectFirst("span.product_num__WuH26")
+                        ?.text()?.trim() ?: ""
                 }
             }
 
