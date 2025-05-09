@@ -38,13 +38,48 @@ class NaverShoppingService {
         parseItem = ::parsePcItem
     )
 
-    suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = coroutineScope {
-        val mobileDeferred = async(Dispatchers.IO) { crawlByConfig(keyword, mobileConfig, true) }
-        val pcDeferred     = async(Dispatchers.IO) { crawlByConfig(keyword, pcConfig, false) }
-        mapOf(
-            "mobile" to mobileDeferred.await(),
-            "pc"     to pcDeferred.await()
-        )
+    suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = withContext(Dispatchers.IO) {
+        WebDriverManager.chromedriver().setup()
+        val driver = createDriver() // WebDriver 하나만 생성
+        try {
+            val mobileData = crawlWithDriver(driver, keyword, mobileConfig)
+            val pcData = crawlWithDriver(driver, keyword, pcConfig)
+            mapOf("mobile" to mobileData, "pc" to pcData)
+        } finally {
+            driver.quit()
+        }
+    }
+
+    private suspend fun crawlWithDriver(
+        driver: WebDriver,
+        keyword: String,
+        config: CrawlConfig
+    ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
+        val results = mutableListOf<Map<String, Any>>()
+        try {
+            val url = config.urlTemplate.format(java.net.URLEncoder.encode(keyword, "UTF-8"))
+            driver.get(url)
+
+            WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
+
+            limitedScroll(driver, times = 1, sleepMillis = 200) // ⬅ 스크롤 최소화도 함께 적용
+
+            val html = driver.pageSource
+            val doc = org.jsoup.Jsoup.parse(html)
+
+            val sections = doc.select(config.sectionSelector)
+            var rank = 1
+            for (section in sections) {
+                config.parseItem(section, keyword, rank)?.let {
+                    results.add(it)
+                }
+                rank++
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        results
     }
 
     private suspend fun crawlByConfig(
@@ -53,7 +88,7 @@ class NaverShoppingService {
         isMobile: Boolean
     ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         WebDriverManager.chromedriver().setup()
-        val driver = createDriver(isMobile)
+        val driver = createDriver()
         val results = mutableListOf<Map<String, Any>>()
 
         try {
@@ -63,7 +98,7 @@ class NaverShoppingService {
             WebDriverWait(driver, Duration.ofSeconds(3))
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
 
-            limitedScroll(driver, times = 3, sleepMillis = 300)
+            limitedScroll(driver, times = 1, sleepMillis = 200)
 
             val html = driver.pageSource
             val doc = org.jsoup.Jsoup.parse(html)
@@ -85,10 +120,9 @@ class NaverShoppingService {
         results
     }
 
-    private fun createDriver(isMobile: Boolean): WebDriver {
+    private fun createDriver(): WebDriver {
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
-            // 공통 Proxy 설정
             val proxyIp = "123.214.67.61"
             val proxyPort = 8899
             setProxy(Proxy().apply {
@@ -99,36 +133,25 @@ class NaverShoppingService {
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                if (isMobile) "--headless=new" else "--headless=chrome",
+                "--headless=new",
                 "--window-size=1920,1080",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled",
-                "--disable-extensions",
-                "--disable-gpu",
-                "--disable-software-rasterizer",
-                "--disable-fonts",
-                "--disable-notifications",
-                "--disable-images",
-                "--disable-javascript"
+                "--lang=ko-KR",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "--disable-blink-features=AutomationControlled"
             )
-            if (!isMobile) {
-                addArguments("--lang=ko-KR")
-                // webdriver 속성 감추기
-                setExperimentalOption("excludeSwitches", listOf("enable-automation"))
-                setExperimentalOption("useAutomationExtension", false)
-            }
+            setExperimentalOption("excludeSwitches", listOf("enable-automation"))
+            setExperimentalOption("useAutomationExtension", false)
         }
+
         return ChromeDriver(options).also { driver ->
-            if (!isMobile) {
-                (driver as JavascriptExecutor).executeScript("""
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                    window.navigator.chrome = { runtime: {} };
-                    Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
-                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-                """.trimIndent())
-            }
+            (driver as JavascriptExecutor).executeScript(
+                """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+        """.trimIndent()
+            )
         }
     }
 
