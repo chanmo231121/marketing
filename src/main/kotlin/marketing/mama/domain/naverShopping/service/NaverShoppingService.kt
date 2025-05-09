@@ -23,19 +23,22 @@ class NaverShoppingService {
     data class CrawlConfig(
         val urlTemplate: String,
         val sectionSelector: String,
-        val parseItem: (Element, String, Int) -> Map<String, Any>?
+        val parseItem: (Element, String, Int) -> Map<String, Any>?,
+        val useJsoupOnly: Boolean = false // 👈 추가
     )
 
     private val mobileConfig = CrawlConfig(
         urlTemplate = "https://msearch.shopping.naver.com/search/all?query=%s",
         sectionSelector = "div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G",
-        parseItem = { section, keyword, rank -> parseMobileItem(section, keyword, rank, getItemType(section)) }
+        parseItem = { section, keyword, rank -> parseMobileItem(section, keyword, rank, getItemType(section)) },
+        useJsoupOnly = true // ✅ 추가
     )
 
     private val pcConfig = CrawlConfig(
         urlTemplate = "https://search.shopping.naver.com/search/all?query=%s",
-        sectionSelector = "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_",
-        parseItem = ::parsePcItem
+        sectionSelector = "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_, div.superSavingProduct_info_area__9mVo7",
+        parseItem = ::parsePcItem,
+        useJsoupOnly = true // ✅ 추가
     )
 
     suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = coroutineScope {
@@ -52,21 +55,28 @@ class NaverShoppingService {
         config: CrawlConfig,
         isMobile: Boolean
     ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
-        WebDriverManager.chromedriver().setup()
-        val driver = createDriver(isMobile)
+        if (config.useJsoupOnly) {
+            return@withContext crawlLightweightWithJsoup(keyword, config)
+        }
+
+        // 이 아래는 더 이상 호출되지 않음 (남겨만 두자)
+        emptyList()
+    }
+
+    private suspend fun crawlLightweightWithJsoup(
+        keyword: String,
+        config: CrawlConfig
+    ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         val results = mutableListOf<Map<String, Any>>()
+        val encoded = java.net.URLEncoder.encode(keyword, "UTF-8")
+        val url = config.urlTemplate.format(encoded)
 
         try {
-            val url = config.urlTemplate.format(keyword)
-            driver.get(url)
+            val doc = org.jsoup.Jsoup.connect(url)
+                .userAgent("Mozilla/5.0")
+                .timeout(5000)
+                .get()
 
-            WebDriverWait(driver, Duration.ofSeconds(3))
-                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector(config.sectionSelector)))
-
-            limitedScroll(driver, times = 3, sleepMillis = if (isMobile) 300 else 300)
-
-            val html = driver.pageSource
-            val doc = org.jsoup.Jsoup.parse(html)
             val sections = doc.select(config.sectionSelector)
 
             var rank = 1
@@ -78,12 +88,11 @@ class NaverShoppingService {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-        } finally {
-            driver.quit()
         }
 
         results
     }
+
 
 
     private fun createDriver(isMobile: Boolean): WebDriver {
@@ -305,7 +314,7 @@ class NaverShoppingService {
                 zzim = section.selectFirst("span.adProduct_num__2Sl5g")?.text()?.trim() ?: ""
                 purchase = ""
 
-            } else if ("superSavingProduct_item__6mR7_" in className) {
+            } else if ("superSavingProduct_item__6mR7_" in className || "superSavingProduct_info_area__9mVo7" in className ) {
                 adLabel = "슈퍼세이빙"
                 title = section.selectFirst("div.superSavingProduct_title__WwZ_b a")?.attr("title")?.trim() ?: ""
                 price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
@@ -398,4 +407,5 @@ class NaverShoppingService {
             null
         }
     }
+
 }
