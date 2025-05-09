@@ -23,22 +23,19 @@ class NaverShoppingService {
     data class CrawlConfig(
         val urlTemplate: String,
         val sectionSelector: String,
-        val parseItem: (Element, String, Int) -> Map<String, Any>?,
-        val useJsoupOnly: Boolean = false // 👈 추가
+        val parseItem: (Element, String, Int) -> Map<String, Any>?
     )
 
     private val mobileConfig = CrawlConfig(
         urlTemplate = "https://msearch.shopping.naver.com/search/all?query=%s",
         sectionSelector = "div.adProduct_list_item__KlavS, div.product_list_item__blfKk, div.superSavingProduct_list_item__P9D0G",
-        parseItem = { section, keyword, rank -> parseMobileItem(section, keyword, rank, getItemType(section)) },
-        useJsoupOnly = true // ✅ 추가
+        parseItem = { section, keyword, rank -> parseMobileItem(section, keyword, rank, getItemType(section)) }
     )
 
     private val pcConfig = CrawlConfig(
         urlTemplate = "https://search.shopping.naver.com/search/all?query=%s",
-        sectionSelector = "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_, div.superSavingProduct_info_area__9mVo7",
-        parseItem = ::parsePcItem,
-        useJsoupOnly = true // ✅ 추가
+        sectionSelector = "div.adProduct_item__T7utB, div.product_item__KQayS, div.superSavingProduct_item__6mR7_",
+        parseItem = ::parsePcItem
     )
 
     suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = coroutineScope {
@@ -55,44 +52,23 @@ class NaverShoppingService {
         config: CrawlConfig,
         isMobile: Boolean
     ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
-        if (config.useJsoupOnly) {
-            return@withContext crawlLightweightWithJsoup(keyword, config)
-        }
-
-        // 이 아래는 더 이상 호출되지 않음 (남겨만 두자)
-        emptyList()
-    }
-
-    private suspend fun crawlLightweightWithJsoup(
-        keyword: String,
-        config: CrawlConfig
-    ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
+        WebDriverManager.chromedriver().setup()
+        val driver = createDriver(isMobile)
         val results = mutableListOf<Map<String, Any>>()
-        val encoded = java.net.URLEncoder.encode(keyword, "UTF-8")
-        val url = config.urlTemplate.format(encoded)
 
         try {
-            val proxyIp = "123.214.67.61"
-            val proxyPort = 8899
+            val url = config.urlTemplate.format(java.net.URLEncoder.encode(keyword, "UTF-8"))
+            driver.get(url)
 
-            val proxy = java.net.Proxy(
-                java.net.Proxy.Type.HTTP,
-                java.net.InetSocketAddress(proxyIp, proxyPort)
-            )
+            WebDriverWait(driver, Duration.ofSeconds(3))
+                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
 
-            val doc = org.jsoup.Jsoup.connect(url)
-                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
-                .timeout(7000)
-                .proxy(proxy) // ✅ 프록시 설정
-                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8")
-                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
-                .header("Connection", "keep-alive")
-                .get()
+            limitedScroll(driver, times = 3, sleepMillis = 300)
 
-            println("[DEBUG] 받은 HTML:\n" + doc.html())
+            val html = driver.pageSource
+            val doc = org.jsoup.Jsoup.parse(html)
 
             val sections = doc.select(config.sectionSelector)
-
             var rank = 1
             for (section in sections) {
                 config.parseItem(section, keyword, rank)?.let {
@@ -102,57 +78,57 @@ class NaverShoppingService {
             }
         } catch (e: Exception) {
             e.printStackTrace()
+        } finally {
+            driver.quit()
         }
 
         results
     }
 
-
-
     private fun createDriver(isMobile: Boolean): WebDriver {
         val options = ChromeOptions().apply {
             setPageLoadStrategy(PageLoadStrategy.EAGER)
-
-            // 프록시 설정
+            // 공통 Proxy 설정
             val proxyIp = "123.214.67.61"
             val proxyPort = 8899
             setProxy(Proxy().apply {
                 httpProxy = "$proxyIp:$proxyPort"
-                sslProxy = "$proxyIp:$proxyPort"
+                sslProxy  = "$proxyIp:$proxyPort"
             })
-
-            // 공통 옵션
             addArguments(
                 "--no-sandbox",
                 "--disable-dev-shm-usage",
                 "--incognito",
-                "--headless=new",
+                if (isMobile) "--headless=new" else "--headless=chrome",
                 "--window-size=1920,1080",
-                "--lang=ko-KR",
+                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
+                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
+                        "Chrome/91.0.4472.124 Safari/537.36",
+                "--disable-blink-features=AutomationControlled",
                 "--disable-extensions",
                 "--disable-gpu",
                 "--disable-software-rasterizer",
+                "--disable-fonts",
                 "--disable-notifications",
-                "--blink-settings=imagesEnabled=false", // 이미지 비활성화
-                "--disable-blink-features=AutomationControlled",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) " +
-                        "AppleWebKit/537.36 (KHTML, like Gecko) " +
-                        "Chrome/113.0.0.0 Safari/537.36"
+                "--disable-images",
+                "--disable-javascript"
             )
-
-            setExperimentalOption("excludeSwitches", listOf("enable-automation"))
-            setExperimentalOption("useAutomationExtension", false)
+            if (!isMobile) {
+                addArguments("--lang=ko-KR")
+                // webdriver 속성 감추기
+                setExperimentalOption("excludeSwitches", listOf("enable-automation"))
+                setExperimentalOption("useAutomationExtension", false)
+            }
         }
-
         return ChromeDriver(options).also { driver ->
-            (driver as JavascriptExecutor).executeScript(
-                """
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            window.navigator.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-        """.trimIndent()
-            )
+            if (!isMobile) {
+                (driver as JavascriptExecutor).executeScript("""
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    window.navigator.chrome = { runtime: {} };
+                    Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                """.trimIndent())
+            }
         }
     }
 
@@ -167,15 +143,14 @@ class NaverShoppingService {
     private fun getItemType(section: Element): String {
         val cls = section.className()
         return when {
-            "adProduct_list_item__KlavS" in cls        -> "광고"
+            "adProduct_list_item__KlavS" in cls -> "광고"
             "superSavingProduct_list_item__P9D0G" in cls -> "슈퍼세이빙"
-            else                                         -> "기본"
+            else -> "기본"
         }
     }
 
     private fun extractTextSafe(parent: Element, selector: String): String =
-        try { parent.selectFirst(selector)?.text()?.trim() ?: "" } catch (_: Exception) { "" }
-
+        try { parent.selectFirst(selector)?.text()?.trim().orEmpty() } catch (_: Exception) { "" }
 
 
 
@@ -243,26 +218,18 @@ class NaverShoppingService {
             }
 
             val purchase = when {
-                isSuper -> extractTextSafe(
-                    section,
-                    "div.superSavingProduct_info_count__0j84V span:nth-of-type(2) em"
-                )
-                else -> {
-                    section.select("div.product_info_count__J6ElA span").firstOrNull { it.text().contains("구매") }
-                        ?.selectFirst("em")?.text()?.trim() ?: ""
-                }
+                isSuper -> extractTextSafe(section, "div.superSavingProduct_info_count__0j84V span:nth-of-type(2) em")
+                else    -> section.select("div.product_info_count__J6ElA span")
+                    .firstOrNull { it.text().contains("구매") }
+                    ?.selectFirst("em")?.text()?.trim() ?: ""
             }
 
             val favorite = when {
-                isSuper -> extractTextSafe(
-                    section,
-                    "div.superSavingProduct_info_count__0j84V span:nth-of-type(3) em"
-                )
+                isSuper -> extractTextSafe(section, "div.superSavingProduct_info_count__0j84V span:nth-of-type(3) em")
                 isAd    -> extractTextSafe(section, "span.adProduct_favorite__V_vhh").replace("찜", "").trim()
-                else    -> {
-                    section.select("div.product_info_count__J6ElA span").firstOrNull { it.text().contains("찜") }
-                        ?.selectFirst("em")?.text()?.trim() ?: ""
-                }
+                else    -> section.select("div.product_info_count__J6ElA span")
+                    .firstOrNull { it.text().contains("찜") }
+                    ?.selectFirst("em")?.text()?.trim() ?: ""
             }
 
             mapOf(
@@ -286,6 +253,8 @@ class NaverShoppingService {
     }
 
 
+
+
     private fun parsePcItem(
         section: Element,
         keyword: String,
@@ -293,7 +262,7 @@ class NaverShoppingService {
     ): Map<String, Any>? {
         return try {
             val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))
-            val className = section.className()
+            val cls = section.className()
             val sellers = MutableList(5) { "" }
             val adLabel: String
             lateinit var title: String
@@ -305,7 +274,7 @@ class NaverShoppingService {
             var zzim = ""
             var purchase = ""
 
-            if ("adProduct_item__T7utB" in className) {
+            if ("adProduct_item__T7utB" in cls) {
                 adLabel = "광고"
                 title = section.selectFirst("div.adProduct_title__fsQU6 a")?.attr("title")?.trim() ?: ""
                 price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
@@ -328,7 +297,7 @@ class NaverShoppingService {
                 zzim = section.selectFirst("span.adProduct_num__2Sl5g")?.text()?.trim() ?: ""
                 purchase = ""
 
-            } else if ("superSavingProduct_item__6mR7_" in className || "superSavingProduct_info_area__9mVo7" in className ) {
+            } else if ("superSavingProduct_item__6mR7_" in cls || "superSavingProduct_info_area__9mVo7" in cls) {
                 adLabel = "슈퍼세이빙"
                 title = section.selectFirst("div.superSavingProduct_title__WwZ_b a")?.attr("title")?.trim() ?: ""
                 price = section.selectFirst("span.price_num__Y66T7 em")?.text()?.trim() ?: ""
@@ -366,16 +335,12 @@ class NaverShoppingService {
                 }
 
                 if (sellers[0].isEmpty()) {
-                    // 1순위: 텍스트 직접 가져오기
                     val sellerTag = section.selectFirst("a.product_mall__0cRyd")
                     val sellerText = sellerTag?.text()?.trim().orEmpty()
-
-                    sellers[0] = when {
-                        sellerText.isNotEmpty() -> sellerText
-                        else -> {
-                            // 2순위: 이미지 alt 대체
-                            sellerTag?.selectFirst("img")?.attr("alt")?.trim().orEmpty()
-                        }
+                    sellers[0] = if (sellerText.isNotEmpty()) {
+                        sellerText
+                    } else {
+                        sellerTag?.selectFirst("img")?.attr("alt")?.trim().orEmpty()
                     }
                 }
 
@@ -421,5 +386,4 @@ class NaverShoppingService {
             null
         }
     }
-
 }
