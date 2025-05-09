@@ -77,6 +77,8 @@ class NaverShoppingService {
                 .timeout(5000)
                 .get()
 
+            println("[DEBUG] 받은 HTML:\n" + doc.html())
+
             val sections = doc.select(config.sectionSelector)
 
             var rank = 1
