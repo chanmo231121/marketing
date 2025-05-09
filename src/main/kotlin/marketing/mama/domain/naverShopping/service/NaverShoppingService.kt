@@ -1,21 +1,17 @@
 package marketing.mama.domain.naverShopping.service
 
-import io.github.bonigarcia.wdm.WebDriverManager
+import com.microsoft.playwright.Browser
+import com.microsoft.playwright.BrowserType
+import com.microsoft.playwright.Page
+import com.microsoft.playwright.Playwright
+import com.microsoft.playwright.options.LoadState
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import org.openqa.selenium.*
-import org.openqa.selenium.chrome.ChromeDriver
-import org.openqa.selenium.chrome.ChromeOptions
-import org.openqa.selenium.support.ui.ExpectedConditions
-import org.openqa.selenium.support.ui.WebDriverWait
 import org.springframework.stereotype.Service
-import java.time.Duration
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import org.openqa.selenium.PageLoadStrategy
 
 @Service
 class NaverShoppingService {
@@ -39,36 +35,80 @@ class NaverShoppingService {
     )
 
     suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = withContext(Dispatchers.IO) {
-        WebDriverManager.chromedriver().setup()
-        val driver = createDriver() // WebDriver 하나만 생성
-        try {
-            val mobileData = crawlWithDriver(driver, keyword, mobileConfig)
-            val pcData = crawlWithDriver(driver, keyword, pcConfig)
+        Playwright.create().use { playwright ->
+            val browser = playwright.chromium().launch(
+                BrowserType.LaunchOptions()
+                    .setHeadless(true)
+                    .setArgs(
+                        listOf(
+                            "--disable-blink-features=AutomationControlled",
+                            "--no-sandbox",
+                            "--disable-dev-shm-usage",
+                            "--disable-gpu",
+                            "--disable-web-security",
+                            "--disable-site-isolation-trials"
+                        )
+                    )
+            )
+
+            val context = browser.newContext(
+                Browser.NewContextOptions()
+                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                    .setLocale("ko-KR")
+                    .setViewportSize(1920, 4000)
+                    .setExtraHTTPHeaders(
+                        mapOf(
+                            "Accept-Language" to "ko-KR,ko;q=0.9",
+                            "Sec-CH-UA" to "\"Chromium\";v=\"122\", \"Not.A/Brand\";v=\"24\"",
+                            "Sec-CH-UA-Mobile" to "?0",
+                            "Sec-CH-UA-Platform" to "\"Windows\""
+                        )
+                    )
+            )
+
+            val pageInitScript = """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        """.trimIndent()
+
+            context.addInitScript(pageInitScript)
+
+            val mobilePage = context.newPage()
+            val mobileData = crawlWithPage(mobilePage, keyword, mobileConfig)
+
+            val pcPage = context.newPage()
+            val pcData = crawlWithPage(pcPage, keyword, pcConfig)
+
+            browser.close()
+
             mapOf("mobile" to mobileData, "pc" to pcData)
-        } finally {
-            driver.quit()
         }
     }
 
-    private suspend fun crawlWithDriver(
-        driver: WebDriver,
+    private suspend fun crawlWithPage(
+        page: Page,
         keyword: String,
         config: CrawlConfig
     ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
         val results = mutableListOf<Map<String, Any>>()
         try {
             val url = config.urlTemplate.format(java.net.URLEncoder.encode(keyword, "UTF-8"))
-            driver.get(url)
+            page.navigate(url)
+            page.waitForLoadState(LoadState.DOMCONTENTLOADED)
+            page.waitForSelector(config.sectionSelector, Page.WaitForSelectorOptions().setTimeout(10000.0))
 
-            WebDriverWait(driver, Duration.ofSeconds(3))
-                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
+            val html = page.content()
+            if ("접속이 일시적으로 제한되었습니다" in html) {
+                println("[ERROR] 네이버가 차단했습니다. 종료합니다.")
+                return@withContext emptyList()
+            }
 
-            //limitedScroll(driver, times = 1, sleepMillis = 200) // ⬅ 스크롤 최소화도 함께 적용
-
-            val html = driver.pageSource
-            val doc = org.jsoup.Jsoup.parse(html)
-
+            val doc = Jsoup.parse(html)
             val sections = doc.select(config.sectionSelector)
+
             var rank = 1
             for (section in sections) {
                 config.parseItem(section, keyword, rank)?.let {
@@ -80,87 +120,6 @@ class NaverShoppingService {
             e.printStackTrace()
         }
         results
-    }
-
-    private suspend fun crawlByConfig(
-        keyword: String,
-        config: CrawlConfig,
-        isMobile: Boolean
-    ): List<Map<String, Any>> = withContext(Dispatchers.IO) {
-        WebDriverManager.chromedriver().setup()
-        val driver = createDriver()
-        val results = mutableListOf<Map<String, Any>>()
-
-        try {
-            val url = config.urlTemplate.format(java.net.URLEncoder.encode(keyword, "UTF-8"))
-            driver.get(url)
-
-            WebDriverWait(driver, Duration.ofSeconds(3))
-                .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
-
-            limitedScroll(driver, times = 1, sleepMillis = 200)
-
-            val html = driver.pageSource
-            val doc = org.jsoup.Jsoup.parse(html)
-
-            val sections = doc.select(config.sectionSelector)
-            var rank = 1
-            for (section in sections) {
-                config.parseItem(section, keyword, rank)?.let {
-                    results.add(it)
-                }
-                rank++
-            }
-        } catch (e: Exception) {
-            e.printStackTrace()
-        } finally {
-            driver.quit()
-        }
-
-        results
-    }
-
-    private fun createDriver(): WebDriver {
-        val options = ChromeOptions().apply {
-            setPageLoadStrategy(PageLoadStrategy.EAGER)
-            val proxyIp = "123.214.67.61"
-            val proxyPort = 8899
-            setProxy(Proxy().apply {
-                httpProxy = "$proxyIp:$proxyPort"
-                sslProxy  = "$proxyIp:$proxyPort"
-            })
-            addArguments(
-                "--no-sandbox",
-                "--disable-dev-shm-usage",
-                "--incognito",
-                "--headless=new",
-                "--window-size=1920,4000",
-                "--lang=ko-KR",
-                "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-                "--disable-blink-features=AutomationControlled"
-            )
-            setExperimentalOption("excludeSwitches", listOf("enable-automation"))
-            setExperimentalOption("useAutomationExtension", false)
-        }
-
-        return ChromeDriver(options).also { driver ->
-            (driver as JavascriptExecutor).executeScript(
-                """
-            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-            window.navigator.chrome = { runtime: {} };
-            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
-            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-        """.trimIndent()
-            )
-        }
-    }
-
-    private fun limitedScroll(driver: WebDriver, times: Int, sleepMillis: Long) {
-        repeat(times) {
-            (driver as JavascriptExecutor)
-                .executeScript("window.scrollTo(0, document.body.scrollHeight);")
-            Thread.sleep(sleepMillis)
-        }
     }
 
     private fun getItemType(section: Element): String {
