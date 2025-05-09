@@ -63,7 +63,7 @@ class NaverShoppingService {
             WebDriverWait(driver, Duration.ofSeconds(3))
                 .until(ExpectedConditions.presenceOfElementLocated(By.cssSelector("body")))
 
-            limitedScroll(driver, times = 1, sleepMillis = 200) // ⬅ 스크롤 최소화도 함께 적용
+            //limitedScroll(driver, times = 1, sleepMillis = 200) // ⬅ 스크롤 최소화도 함께 적용
 
             val html = driver.pageSource
             val doc = org.jsoup.Jsoup.parse(html)
@@ -134,7 +134,7 @@ class NaverShoppingService {
                 "--disable-dev-shm-usage",
                 "--incognito",
                 "--headless=new",
-                "--window-size=1920,1080",
+                "--window-size=1920,4000",
                 "--lang=ko-KR",
                 "user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "--disable-blink-features=AutomationControlled"
