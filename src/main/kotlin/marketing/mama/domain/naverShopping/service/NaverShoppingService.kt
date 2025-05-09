@@ -42,7 +42,7 @@ class NaverShoppingService {
         Playwright.create().use { playwright ->
             val browser = playwright.chromium().launch(
                 BrowserType.LaunchOptions()
-                    .setHeadless(true)
+                    .setHeadless(false)
                     .setProxy(Proxy("http://$proxyIp:$proxyPort"))
                     .setArgs(
                         listOf(
@@ -90,6 +90,70 @@ class NaverShoppingService {
             browser.close()
 
             mapOf("mobile" to mobileData, "pc" to pcData)
+        }
+    }
+
+    suspend fun crawlMultipleKeywords(keywords: List<String>): Map<String, List<Map<String, Any>>> = withContext(Dispatchers.IO) {
+        val proxyIp = "123.214.67.61"
+        val proxyPort = 8899
+
+        Playwright.create().use { playwright ->
+            val browser = playwright.chromium().launch(
+                BrowserType.LaunchOptions()
+                    .setHeadless(true)
+                    .setProxy(Proxy("http://$proxyIp:$proxyPort"))
+                    .setArgs(
+                        listOf(
+                            "--disable-blink-features=AutomationControlled",
+                            "--no-sandbox",
+                            "--disable-dev-shm-usage",
+                            "--disable-gpu",
+                            "--disable-web-security",
+                            "--disable-site-isolation-trials"
+                        )
+                    )
+            )
+
+            val context = browser.newContext(
+                Browser.NewContextOptions()
+                    .setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36")
+                    .setLocale("ko-KR")
+                    .setViewportSize(1920, 4000)
+                    .setExtraHTTPHeaders(
+                        mapOf(
+                            "Accept-Language" to "ko-KR,ko;q=0.9",
+                            "Sec-CH-UA" to "\"Chromium\";v=\"122\", \"Not.A/Brand\";v=\"24\"",
+                            "Sec-CH-UA-Mobile" to "?0",
+                            "Sec-CH-UA-Platform" to "\"Windows\""
+                        )
+                    )
+            )
+
+            val pageInitScript = """
+            Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+            window.navigator.chrome = { runtime: {} };
+            Object.defineProperty(navigator, 'languages', { get: () => ['ko-KR', 'ko'] });
+            Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+            Object.defineProperty(navigator, 'platform', { get: () => 'Win32' });
+        """.trimIndent()
+            context.addInitScript(pageInitScript)
+
+            val mobilePage = context.newPage()
+            val pcPage = context.newPage()
+
+            val resultMap = mutableMapOf<String, List<Map<String, Any>>>()
+
+            for (keyword in keywords) {
+                println("[INFO] 키워드 크롤링 중: $keyword")
+
+                val mobileData = crawlWithPage(mobilePage, keyword, mobileConfig)
+                val pcData = crawlWithPage(pcPage, keyword, pcConfig)
+
+                resultMap[keyword] = mobileData + pcData
+            }
+
+            browser.close()
+            resultMap
         }
     }
 

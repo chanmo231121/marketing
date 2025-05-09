@@ -29,20 +29,18 @@ class NaverShoppingController(
     private val searchLogService: SearchLogService,
 ) {
 
-    @Operation(summary = "네이버 쇼핑 크롤링 (관리자/승인 상태 예외 처리 포함)")
+    @Operation(summary = "네이버 쇼핑 크롤링 (다중 키워드 처리, 관리자/승인 상태 예외 처리 포함)")
     @GetMapping
     @PreAuthorize("isAuthenticated()")
-    fun crawlAll(
-        @RequestParam("keyword") keyword: String,
+    fun crawlMultiple(
+        @RequestParam("keywords") keywords: List<String>,
         @RequestHeader("X-Device-Id") deviceId: String?,
         @AuthenticationPrincipal userPrincipal: UserPrincipal
     ): ResponseEntity<Any> {
-        // 1) 사용자 조회 및 디바이스 검증
         val user = userRepository.findById(userPrincipal.id)
             .orElseThrow { IllegalArgumentException("유효하지 않은 사용자입니다.") }
         userService.validateDevice(user, deviceId)
 
-        // 2) ADMIN이 아니면 상태별 예외 처리
         if (user.role.name != "ADMIN") {
             when (user.status) {
                 Status.PENDING_APPROVAL, Status.WAITING ->
@@ -57,21 +55,20 @@ class NaverShoppingController(
             }
         }
 
-        // 3) 로그 기록 및 사용량 체크
+        // 다중 키워드일 때도 키워드당 1회로 간주하여 사용량은 1회만 증가
         searchLogService.logSearch(
-            user       = user,
-            userName   = user.name,
-            ip         = user.ipAddress,
-            keyword    = keyword,
-            type       = ActionType.쇼핑검색,
-            uuid       = user.deviceId
+            user = user,
+            userName = user.name,
+            ip = user.ipAddress,
+            keyword = keywords.joinToString(", "),
+            type = ActionType.쇼핑검색,
+            uuid = user.deviceId
         )
         searchUsageService.incrementShoppingSearchWithLimit()
 
-        // 4) 코루틴 병렬처리된 서비스 호출
         return try {
-            val results = runBlocking { naverShoppingService.crawlAll(keyword) }
-            ResponseEntity.ok(results)
+            val result = runBlocking { naverShoppingService.crawlMultipleKeywords(keywords) }
+            ResponseEntity.ok(result)
         } catch (e: Exception) {
             ResponseEntity.internalServerError()
                 .body(mapOf("error" to "서버 오류가 발생했습니다. 다시 시도해주세요."))
