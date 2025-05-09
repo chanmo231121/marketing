@@ -72,9 +72,21 @@ class NaverShoppingService {
         val url = config.urlTemplate.format(encoded)
 
         try {
+            val proxyIp = "123.214.67.61"
+            val proxyPort = 8899
+
+            val proxy = java.net.Proxy(
+                java.net.Proxy.Type.HTTP,
+                java.net.InetSocketAddress(proxyIp, proxyPort)
+            )
+
             val doc = org.jsoup.Jsoup.connect(url)
-                .userAgent("Mozilla/5.0")
-                .timeout(5000)
+                .userAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64)")
+                .timeout(7000)
+                .proxy(proxy) // ✅ 프록시 설정
+                .header("Accept-Language", "ko-KR,ko;q=0.9,en-US;q=0.8")
+                .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8")
+                .header("Connection", "keep-alive")
                 .get()
 
             println("[DEBUG] 받은 HTML:\n" + doc.html())
