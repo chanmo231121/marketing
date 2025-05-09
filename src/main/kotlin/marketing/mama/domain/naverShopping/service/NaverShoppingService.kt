@@ -5,6 +5,7 @@ import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.options.LoadState
+import com.microsoft.playwright.options.Proxy
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.jsoup.Jsoup
@@ -35,10 +36,14 @@ class NaverShoppingService {
     )
 
     suspend fun crawlAll(keyword: String): Map<String, List<Map<String, Any>>> = withContext(Dispatchers.IO) {
+        val proxyIp = "123.214.67.61"
+        val proxyPort = 8899
+
         Playwright.create().use { playwright ->
             val browser = playwright.chromium().launch(
                 BrowserType.LaunchOptions()
                     .setHeadless(true)
+                    .setProxy(Proxy("http://$proxyIp:$proxyPort"))
                     .setArgs(
                         listOf(
                             "--disable-blink-features=AutomationControlled",
