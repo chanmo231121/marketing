@@ -20,7 +20,6 @@ class Keyword2Controller(
     private val searchLogService: SearchLogService,
     private val userService: UserService // ✅ 추가
 ) {
-
     @Operation(summary = "키워드 연관검색")
     @CrossOrigin
     @GetMapping("/api/keyword2")
