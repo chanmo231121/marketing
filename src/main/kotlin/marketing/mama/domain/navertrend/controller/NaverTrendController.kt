@@ -25,6 +25,7 @@ class NaverTrendController(
     private val searchLogService: SearchLogService
 ) {
 
+
     @Operation(summary = "네이버 트렌드 검색")
     @PostMapping("/trend")
     @PreAuthorize("isAuthenticated()")
