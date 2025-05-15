@@ -126,6 +126,7 @@ class AdminUserController(
             "related" -> user.canUseRelatedSearch = request.enabled
             "mixer" -> user.canUseKeywordMix = request.enabled
             "shopping" -> user.canUseShoppingSearch = request.enabled
+            "trend" -> user.canUseTrendSearch = request.enabled // ✅ 추가
 
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 기능명입니다.")
         }
@@ -168,6 +169,7 @@ class AdminUserController(
             "single" -> user.singleSearchLimit = limit
             "ranking" -> user.rankingSearchLimit = limit
             "shopping" -> user.shoppingSearchLimit = limit
+            "trend" -> user.trendSearchLimit = limit
             else -> throw ResponseStatusException(HttpStatus.BAD_REQUEST, "알 수 없는 타입입니다.")
         }
 

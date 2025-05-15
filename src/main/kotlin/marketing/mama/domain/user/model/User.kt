@@ -82,6 +82,9 @@ class User(
     @Column(nullable = false)
     var canUseShoppingSearch: Boolean = true,
 
+    @Column(nullable = false)
+    var canUseTrendSearch:Boolean = true,
+
     @Column(name = "single_search_limit")
     var singleSearchLimit: Int? = 200,
 
@@ -89,7 +92,10 @@ class User(
     var rankingSearchLimit: Int? = 50,
 
     @Column(name = "shopping_search_limit")
-    var shoppingSearchLimit: Int? = 50,  // 기본값은 100회
+    var shoppingSearchLimit: Int? = 50,
+
+    @Column(name = "trend_search_limit")
+    var trendSearchLimit: Int? = 100,
 
     @OneToMany(mappedBy = "user", cascade = [CascadeType.REMOVE], orphanRemoval = true)
     val refreshTokens: MutableList<RefreshToken> = mutableListOf()

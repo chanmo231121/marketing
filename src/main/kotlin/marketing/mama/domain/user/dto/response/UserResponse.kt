@@ -23,6 +23,7 @@ data class UserResponse(
     val canUseKeywordMix: Boolean,
     val canUseRelatedSearch: Boolean,
     val canUseShoppingSearch: Boolean,
+    val canUseTrendSearch: Boolean
 ) {
     companion object {
         private val dateFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd")
@@ -50,6 +51,7 @@ data class UserResponse(
                 canUseKeywordMix = user.canUseKeywordMix,
                 canUseRelatedSearch = user.canUseRelatedSearch,
                 canUseShoppingSearch = user.canUseShoppingSearch,
+                canUseTrendSearch = user.canUseTrendSearch
             )
         }
     }

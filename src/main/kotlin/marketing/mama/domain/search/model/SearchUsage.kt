@@ -28,7 +28,10 @@ data class SearchUsage(
     var rankingSearchCount: Int = 0,
 
     @Column(name = "shopping_search_count", nullable = false)
-    var shoppingSearchCount: Int = 0
+    var shoppingSearchCount: Int = 0,
+
+    @Column(name = "trend_search_count", nullable = false)
+    var trendSearchCount: Int = 0
 
 
 ) : BaseEntity() {

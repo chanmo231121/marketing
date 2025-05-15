@@ -1,6 +1,8 @@
 package marketing.mama.domain.navertrend.controller
 
 import io.swagger.v3.oas.annotations.Operation
+import marketing.mama.domain.activitylog.model.ActionType
+import marketing.mama.domain.activitylog.service.SearchLogService
 import marketing.mama.domain.navertrend.dto.NaverTrendRequest
 import marketing.mama.domain.navertrend.service.NaverTrendService
 import marketing.mama.domain.search.service.SearchUsageService
@@ -20,7 +22,8 @@ class NaverTrendController(
     private val naverTrendService: NaverTrendService,
     private val userRepository: UserRepository,
     private val userService: UserService,
-    private val searchUsageService: SearchUsageService
+    private val searchUsageService: SearchUsageService,
+    private val searchLogService: SearchLogService
 ) {
 
     @Operation(summary = "네이버 트렌드 검색")
@@ -48,11 +51,24 @@ class NaverTrendController(
             }
         }
 
-        return try {
-            // 사용량 제한 먼저 검사
-            searchUsageService.incrementSingleSearchWithLimit()
+        val keywords = request.keywordGroups.flatMap { it.keywords }
 
-            // 실제 네이버 트렌드 API 호출
+        // ✅ 검색 기록 로깅
+        searchLogService.logSearch(
+            user = user,
+            userName = user.name,
+            ip = user.ipAddress,
+            keyword = keywords.joinToString(", "),
+            type = ActionType.트렌드검색,
+            uuid = user.deviceId
+        )
+
+        // ✅ 여기에서 첫 batch인지 확인하고 사용량 카운트
+        if (request.isFirstBatch == true) {
+            searchUsageService.incrementTrendSearchWithLimit()
+        }
+
+        return try {
             val result = naverTrendService.getTrend(request)
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {

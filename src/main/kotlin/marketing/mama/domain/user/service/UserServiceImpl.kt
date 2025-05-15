@@ -100,7 +100,8 @@ class UserServiceImpl(
             canUseRankingSearch = user.canUseRankingSearch,
             canUseKeywordMix = user.canUseKeywordMix,
             canUseRelatedSearch = user.canUseRelatedSearch,
-            canUseShoppingSearch = user.canUseShoppingSearch
+            canUseShoppingSearch = user.canUseShoppingSearch,
+            canUseTrendSearch = user.canUseTrendSearch
 
         )
     }

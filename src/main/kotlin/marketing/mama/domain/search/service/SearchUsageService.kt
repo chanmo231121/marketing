@@ -84,8 +84,29 @@ class SearchUsageService(
         usage.shoppingSearchCount++
         searchUsageRepository.save(usage)
 
-        println("✅ 쇼핑 검색 카운트 완료: ${usage.shoppingSearchCount}") // 최종 카운트 찍기
     }
+
+    @Transactional
+    fun incrementTrendSearchWithLimit() {
+        val user = getCurrentUser()
+
+        // 관리자나 PRO만 사용 가능하도록 제한할 경우
+        if (user.role != Role.PRO && user.role != Role.ADMIN) return
+
+        val limit = user.trendSearchLimit ?: 100
+        val today = LocalDate.now()
+
+        val usage = searchUsageRepository.findByUserIdAndUsageDate(user.id!!, today)
+            ?: searchUsageRepository.save(SearchUsage(user = user, usageDate = today))
+
+        if (usage.trendSearchCount >= limit) {
+            throw IllegalStateException("⛔ 트렌드 검색은 하루 최대 ${limit}회까지 가능합니다.")
+        }
+
+        usage.trendSearchCount++
+        searchUsageRepository.save(usage)
+    }
+
 
     fun getUserSearchUsageInfo(userId: Long): SearchUsageInfoResponse {
         val user = userRepository.findByIdOrNull(userId)
@@ -93,12 +114,20 @@ class SearchUsageService(
 
         val today = LocalDate.now()
         val usage = searchUsageRepository.findByUserIdAndUsageDate(userId, today)
-            ?: SearchUsage(user = user, usageDate = today, singleSearchCount = 0, rankingSearchCount = 0, shoppingSearchCount = 0)
+            ?: SearchUsage(
+                user = user,
+                usageDate = today,
+                singleSearchCount = 0,
+                rankingSearchCount = 0,
+                shoppingSearchCount = 0,
+                trendSearchCount = 0 // ✅ 반드시 추가
+            )
 
         val isPro = user.role == Role.PRO
         val singleLimit = if (isPro) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
         val rankingLimit = if (isPro) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
         val shoppingLimit = if (isPro) user.shoppingSearchLimit ?: 100 else Int.MAX_VALUE
+        val trendLimit = if (isPro) user.trendSearchLimit  ?: 100 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,
@@ -107,9 +136,13 @@ class SearchUsageService(
             rankingSearchUsed = usage.rankingSearchCount,
             shoppingSearchLimit = shoppingLimit,                   // ✅ 추가
             shoppingSearchUsed = usage.shoppingSearchCount,         // ✅ 추가
+            trendSearchLimit = trendLimit,
+            trendSearchUsed = usage.trendSearchCount,
+
             canUseSingleSearch = usage.singleSearchCount < singleLimit,
             canUseRankingSearch = usage.rankingSearchCount < rankingLimit,
-            canUseShoppingSearch = usage.shoppingSearchCount < shoppingLimit // ✅ 추가
+            canUseShoppingSearch = usage.shoppingSearchCount < shoppingLimit,
+            canUseTrendSearch = usage.trendSearchCount < trendLimit
         )
     }
 
@@ -120,11 +153,13 @@ class SearchUsageService(
         val singleUsed = usage?.singleSearchCount ?: 0
         val rankingUsed = usage?.rankingSearchCount ?: 0
         val shoppingUsed = usage?.shoppingSearchCount ?: 0  // ✅ 쇼핑 사용량 추가
+        val trendUsed = usage?.trendSearchCount  ?: 0
 
         val isPro = user.role == Role.PRO
         val singleLimit = if (isPro) user.singleSearchLimit ?: 200 else Int.MAX_VALUE
         val rankingLimit = if (isPro) user.rankingSearchLimit ?: 50 else Int.MAX_VALUE
         val shoppingLimit = if (isPro) user.shoppingSearchLimit ?: 100 else Int.MAX_VALUE  // ✅ 쇼핑 한도 추가
+        val trendLimit = if (isPro) user.trendSearchLimit  ?: 100 else Int.MAX_VALUE
 
         return SearchUsageInfoResponse(
             singleSearchLimit = singleLimit,
@@ -133,9 +168,14 @@ class SearchUsageService(
             rankingSearchUsed = rankingUsed,
             shoppingSearchLimit = shoppingLimit,     // ✅ 추가
             shoppingSearchUsed = shoppingUsed,       // ✅ 추가
+            trendSearchLimit = trendLimit,
+            trendSearchUsed = trendUsed,
+
             canUseSingleSearch = singleUsed < singleLimit,
             canUseRankingSearch = rankingUsed < rankingLimit,
-            canUseShoppingSearch = shoppingUsed < shoppingLimit  // ✅ 추가
+            canUseShoppingSearch = shoppingUsed < shoppingLimit,
+            canUseTrendSearch = trendUsed < trendLimit
+// ✅ 추가
         )
     }
 
@@ -150,7 +190,8 @@ class SearchUsageService(
         when (type) {
             "single" -> usage.singleSearchCount = 0
             "ranking" -> usage.rankingSearchCount = 0
-            "shopping" -> usage.shoppingSearchCount = 0 // ✅ 쇼핑 검색 카운트도 초기화 추가
+            "shopping" -> usage.shoppingSearchCount = 0
+            "trend" -> usage.trendSearchCount = 0// ✅ 쇼핑 검색 카운트도 초기화 추가
             else -> throw IllegalArgumentException("잘못된 타입: $type")
         }
 

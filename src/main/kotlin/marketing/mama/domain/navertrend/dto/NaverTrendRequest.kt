@@ -7,7 +7,8 @@ data class NaverTrendRequest(
     val keywordGroups: List<KeywordGroup>,
     val device: String?,
     val ages: List<String>?,
-    val gender: String?
+    val gender: String?,
+    val isFirstBatch: Boolean? = false
 )
 
 data class KeywordGroup(
