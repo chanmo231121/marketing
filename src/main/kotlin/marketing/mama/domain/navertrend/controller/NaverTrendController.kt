@@ -15,7 +15,6 @@ import org.springframework.security.access.prepost.PreAuthorize
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.web.bind.annotation.*
 
-
 @RestController
 @RequestMapping("/api/naver")
 class NaverTrendController(
@@ -63,7 +62,7 @@ class NaverTrendController(
             uuid = user.deviceId
         )
 
-        // ✅ 여기에서 첫 batch인지 확인하고 사용량 카운트
+        // ✅ 첫 요청에만 사용량 카운트
         if (request.isFirstBatch == true) {
             searchUsageService.incrementTrendSearchWithLimit()
         }
@@ -72,8 +71,10 @@ class NaverTrendController(
             val result = naverTrendService.getTrend(request)
             ResponseEntity.ok(result)
         } catch (e: IllegalStateException) {
+            e.printStackTrace() // 🔥 로그 출력 추가
             ResponseEntity.status(429).body(mapOf("error" to e.message))
         } catch (e: Exception) {
+            e.printStackTrace() // 🔥 로그 출력 추가
             ResponseEntity.status(500).body(mapOf("error" to "서버 오류가 발생했습니다. 다시 시도해주세요."))
         }
     }
